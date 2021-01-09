@@ -1,0 +1,54 @@
+Introduction
+Azure Analytics Story: Synapse + Power BI + AMLS + Data Share + Babylon
+Data Lakehouse
+Individual Services vs Synapse
+
+Lab1: 
+Topics: Relational Workloads
+	DW and Data Lake Concepts
+	Synapse Studio Walk-through
+	Synapse Data Integration
+	Synapse SQL Pools: Important Concepts (MPP vs SMP, Table Distribution, Workload Isolation, Design Tips)
+	Power BI
+
+Lab2: 
+Topics: Big Data Processing
+	Parquet Files
+	Data Lake Design (Zones)
+	Spark
+	SQL On Demand
+	Mapping Data Flows
+	Spark Notebooks
+	Power BI Composite Models
+
+Lab3:
+	Unstructured Data Processing
+	NoSQL
+	AI: Cognitive Services
+	CosmosDB / Synapse Link
+	Power BI AI Visuals (Decomposition tree, key influencers, Q&A)
+
+Lab4:   
+Topics: Real-time Analytics 
+	Eventhubs vs IoT Hubs
+	Stream Analytics vs Spark Stream
+	Structured Stream
+	Power BI Realtime Dashboards
+
+Lab5: 
+Topics: Data Governance and Data Sharing
+Data Governance:
+	- Business Glossary
+	- Data Assets and Data Classification
+	- Lineage
+	- Policies
+	- Data Quality
+Data Sharing
+	
+
+Lab6: Optional
+Topic: Azure Machine Learning Services and MLOps
+
+Lab7: Optional
+Topic: Monitoring
+
