@@ -64,3 +64,4 @@ $body = '{
 $result = Invoke-RestMethod -Method Put -ContentType "application/json" -Uri $uri -Headers $headers -Body $body
 
 Write-Host ($result | ConvertTo-Json)
+
