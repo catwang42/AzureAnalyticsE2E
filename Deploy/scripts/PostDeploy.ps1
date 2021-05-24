@@ -1,36 +1,14 @@
 param(
   [string] $DeploymentMode,
   [string] $WorkspaceName,
-  #[string] $SynapseSqlAdminUserName,
-  #[string] $SynapseSqlAdminPassword,
   [string] $KeyVaultName,
   [string] $KeyVaultID,
   [string] $DataLakeStorageAccountName,
   [string] $DataLakeStorageAccountID,
   [string] $UAMIIdentityID,
   [string] $AzMLSynapseLinkedServiceIdentityID,
-  [string] $PurviewAccountName,
-  [string] $AzureMLWorkspaceName,
-  [string] $SQLServerlessDBName
+  [string] $AzureMLWorkspaceName
 )
-
-# $Context = Get-AzContext
-# $tenantID = $Context.Tenant.Id
-
-#Try {
-#  Write-Host "Getting secrets from KeyVault"
-#  $AADDirectoryReaderPrincipalID = Get-AzKeyVaultSecret -VaultName $KeyVaultName -Name "AADDirectoryReaderPrincipalID" -AsPlainText
-#  $SecureString = $AADDirectoryReaderPrincipalID | ConvertTo-SecureString -AsPlainText -Force
-#  $Cred = New-Object System.Management.Automation.PSCredential "ignore", $AADDirectoryReaderPrincipalID
-#}
-#Catch {
-#  $ErrorMessage = "Failed to retrieve the secret from $($KeyVault)."
-#  $ErrorMessage += " `n"
-#  $ErrorMessage += 'Error: '
-#  $ErrorMessage += $_
-#  Write-Error -Message $ErrorMessage `
-#              -ErrorAction Stop
-#}
 
 $retries = 10
 $secondsDelay = 30
