@@ -120,9 +120,8 @@ while (-not $completed) {
 [string[]] $managedPrivateEndpointNames = $KeyVaultName, $DataLakeStorageAccountName
 [string[]] $managedPrivateEndpointIDs = $KeyVaultID, $DataLakeStorageAccountID
 
-if ($DeploymentMode -eq "vNet"){
-
-  for($i = 0; $i -le ($managedPrivateEndpointNames.lenght - 1; $i += 1))
+if ($DeploymentMode -eq "vNet") {
+  for($i = 0; $i -le ($managedPrivateEndpointNames.lenght - 1); $i += 1)
   {
     $uri = "https://$WorkspaceName.dev.azuresynapse.net"
     $uri += "/managedVirtualNetworks/default/managedPrivateEndpoints/$managedPrivateEndpointNames[$i]"
@@ -148,7 +147,7 @@ if ($DeploymentMode -eq "vNet"){
     
     while (-not $completed) {
       try {
-        $result = Invoke-RestMethod -Method Put -ContentType "application/json" -Uri $uri -Headers $headers -Body $body -ErrorAction Stop
+        Invoke-RestMethod -Method Put -ContentType "application/json" -Uri $uri -Headers $headers -Body $body -ErrorAction Stop
         Write-Host "Managed private endpoint for $managedPrivateEndpointNames[$i] created successfully."
         $completed = $true
       }
@@ -164,3 +163,4 @@ if ($DeploymentMode -eq "vNet"){
       }
     }
   }
+}
