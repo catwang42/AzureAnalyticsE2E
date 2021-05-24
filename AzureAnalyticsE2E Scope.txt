@@ -4,22 +4,34 @@ Data Lakehouse
 Individual Services vs Synapse
 
 Lab1: 
-Topics: Relational Workloads
-	DW and Data Lake Concepts
+Concepts: Relational Workloads
+	DW and Data Lake Design Concepts
+	Data Lake Design Concepts
+	Parquet Files
 	Synapse Studio Walk-through
-	Synapse Data Integration
+	Synapse Pipelines and Data Flows
 	Synapse SQL Pools: Important Concepts (MPP vs SMP, Table Distribution, Workload Isolation, Design Tips)
 	Power BI
 
+Lab workflow:
+Load from Motorvehicle Collision from SQL Database using Synapse Pipelines
+Copy Activity to park data in the Raw container
+Mapping Data Flow to Transform data into Curated container as Parquet files
+Copy activity to load data into SQL Pool
+Power BI to read from SQL Pool.
+
 Lab2: 
 Topics: Big Data Processing
-	Parquet Files
-	Data Lake Design (Zones)
 	Spark
-	SQL On Demand
-	Mapping Data Flows
+	SQL Serverless
 	Spark Notebooks
-	Power BI Composite Models
+	Power BI Composite Models and Aggregations
+
+Lab workflow:
+Load NYC Taxi Data using Synapse Pipelines
+Binary Copy Activity to Park files in the Raw container
+Use Spark Notebook to cleanse and transform data into Spark table in the Curated container.
+Use SQL Serverless to query data using and populate Power BI model (aggregates)
 
 Lab3:
 	Unstructured Data Processing
@@ -43,8 +55,11 @@ Data Governance:
 	- Lineage
 	- Policies
 	- Data Quality
-Data Sharing
-	
+
+
+Data Sharing:
+	Share data with an internal department.
+
 
 Lab6: Optional
 Topic: Azure Machine Learning Services and MLOps

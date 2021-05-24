@@ -1,0 +1,1025 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.3.255.40792",
+      "templateHash": "9767117587058599900"
+    }
+  },
+  "parameters": {
+    "aadDirectoryReaderPrincipalID": {
+      "type": "string",
+      "defaultValue": "b0d7a8aa-8447-4c83-b238-ec953ae990f6"
+    },
+    "deploymentMode": {
+      "type": "string",
+      "defaultValue": "default",
+      "metadata": {
+        "description": "Deployment Mode"
+      },
+      "allowedValues": [
+        "default",
+        "vNet"
+      ]
+    },
+    "resourceLocation": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Resource Location"
+      }
+    },
+    "uniqueSuffix": {
+      "type": "string",
+      "defaultValue": "[substring(uniqueString(resourceGroup().id), 0, 5)]",
+      "metadata": {
+        "description": "Unique Suffix"
+      }
+    },
+    "ctrlDeployAzureRBAC": {
+      "type": "bool",
+      "defaultValue": true
+    },
+    "ctrlDeployPurview": {
+      "type": "bool",
+      "defaultValue": true
+    },
+    "ctrlDeployAI": {
+      "type": "bool",
+      "defaultValue": true
+    },
+    "ctrlDeployStreaming": {
+      "type": "bool",
+      "defaultValue": true
+    },
+    "crtlDeployDataShare": {
+      "type": "bool",
+      "defaultValue": true
+    },
+    "ctrlPostDeployScript": {
+      "type": "bool",
+      "defaultValue": true
+    },
+    "ctrlAllowStoragePublicContainer": {
+      "type": "bool",
+      "defaultValue": true
+    },
+    "vNetName": {
+      "type": "string",
+      "defaultValue": "[format('azvnet{0}', parameters('uniqueSuffix'))]",
+      "metadata": {
+        "description": "Virtual Network Name"
+      }
+    },
+    "vNetIPAddressPrefix": {
+      "type": "string",
+      "defaultValue": "10.1.0.0/16",
+      "metadata": {
+        "description": "Virtual Network IP Address Space"
+      }
+    },
+    "vNetSubnetName": {
+      "type": "string",
+      "defaultValue": "default",
+      "metadata": {
+        "description": "Virtual Network Subnet Name"
+      }
+    },
+    "vNetSubnetIPAddressPrefix": {
+      "type": "string",
+      "defaultValue": "10.1.0.0/24",
+      "metadata": {
+        "description": "Virtual Network Subnet Name"
+      }
+    },
+    "dataLakeAccountName": {
+      "type": "string",
+      "defaultValue": "[format('azdatalake{0}', parameters('uniqueSuffix'))]",
+      "metadata": {
+        "description": "Data Lake Storage Account Name"
+      }
+    },
+    "dataLakeRawZoneName": {
+      "type": "string",
+      "defaultValue": "raw",
+      "metadata": {
+        "description": "Data Lake Raw Zone Container Name"
+      }
+    },
+    "dataLakeTrustedZoneName": {
+      "type": "string",
+      "defaultValue": "trusted",
+      "metadata": {
+        "description": "Data Lake Trusted Zone Container Name"
+      }
+    },
+    "dataLakeCuratedZoneName": {
+      "type": "string",
+      "defaultValue": "curated",
+      "metadata": {
+        "description": "Data Lake Curated Zone Container Name"
+      }
+    },
+    "dataLakePublicZoneName": {
+      "type": "string",
+      "defaultValue": "public",
+      "metadata": {
+        "description": "Data Lake Public Zone Container Name"
+      }
+    },
+    "dataLakeTransientZoneName": {
+      "type": "string",
+      "defaultValue": "transient",
+      "metadata": {
+        "description": "Data Lake Transient Zone Container Name"
+      }
+    },
+    "dataLakeSandpitZoneName": {
+      "type": "string",
+      "defaultValue": "sandpit",
+      "metadata": {
+        "description": "Data Lake Sandpit Zone Container Name"
+      }
+    },
+    "synapseDefaultContainerName": {
+      "type": "string",
+      "defaultValue": "system",
+      "metadata": {
+        "description": "Synapse Default Container Name"
+      }
+    },
+    "synapseWorkspaceName": {
+      "type": "string",
+      "defaultValue": "[format('azsynapsewks{0}', parameters('uniqueSuffix'))]",
+      "metadata": {
+        "description": "Synapse Workspace Name"
+      }
+    },
+    "synapseSqlAdminUserName": {
+      "type": "string",
+      "defaultValue": "azsynapseadmin",
+      "metadata": {
+        "description": "SQL Admin User Name"
+      }
+    },
+    "synapseSqlAdminPassword": {
+      "type": "string",
+      "defaultValue": "P@ssw0rd123!",
+      "metadata": {
+        "description": "SQL Admin User Name"
+      }
+    },
+    "synapseManagedRGName": {
+      "type": "string",
+      "defaultValue": "[format('{0}-mrg', parameters('synapseWorkspaceName'))]",
+      "metadata": {
+        "description": "Synapse Managed Resource Group Name"
+      }
+    },
+    "synapseDedicatedSQLPoolName": {
+      "type": "string",
+      "defaultValue": "EnterpriseDW",
+      "metadata": {
+        "description": "SQL Pool Name"
+      }
+    },
+    "synapseSQLPoolSKU": {
+      "type": "string",
+      "defaultValue": "DW200c",
+      "metadata": {
+        "description": "SQL Pool SKU"
+      }
+    },
+    "synapseSparkPoolName": {
+      "type": "string",
+      "defaultValue": "SparkCluster",
+      "metadata": {
+        "description": "Spark Pool Name"
+      }
+    },
+    "synapseSparkPoolNodeSize": {
+      "type": "string",
+      "defaultValue": "Small",
+      "metadata": {
+        "description": "Spark Node Size"
+      }
+    },
+    "synapseSparkPoolMinNodeCount": {
+      "type": "int",
+      "defaultValue": 2,
+      "metadata": {
+        "description": "Spark Min Node Count"
+      }
+    },
+    "synapseSparkPoolMaxNodeCount": {
+      "type": "int",
+      "defaultValue": 2,
+      "metadata": {
+        "description": "Spark Max Node Count"
+      }
+    },
+    "purviewAccountName": {
+      "type": "string",
+      "defaultValue": "[format('azpurview{0}', parameters('uniqueSuffix'))]",
+      "metadata": {
+        "description": "Purview Account Name"
+      }
+    },
+    "keyVaultName": {
+      "type": "string",
+      "defaultValue": "[format('azkeyvault{0}', parameters('uniqueSuffix'))]",
+      "metadata": {
+        "description": "Data Lake Storage Account Name"
+      }
+    },
+    "azureMLWorkspaceName": {
+      "type": "string",
+      "defaultValue": "[format('azmlwks{0}', parameters('uniqueSuffix'))]",
+      "metadata": {
+        "description": "Azure Machine Learning Workspace Name"
+      }
+    },
+    "azureMLStorageAccountName": {
+      "type": "string",
+      "defaultValue": "[format('azmlstorage{0}', parameters('uniqueSuffix'))]",
+      "metadata": {
+        "description": "Azure Machine Learning Storage Account Name"
+      }
+    },
+    "azureMLAppInsightsName": {
+      "type": "string",
+      "defaultValue": "[format('azmlappinsights{0}', parameters('uniqueSuffix'))]",
+      "metadata": {
+        "description": "Azure Machine Learning Application Insights Name"
+      }
+    },
+    "dataShareAccountName": {
+      "type": "string",
+      "defaultValue": "[format('azdatashare{0}', parameters('uniqueSuffix'))]",
+      "metadata": {
+        "description": "Azure Data Share Name"
+      }
+    },
+    "cognitiveServiceAccountName": {
+      "type": "string",
+      "defaultValue": "[format('azcognitivesvc{0}', parameters('uniqueSuffix'))]",
+      "metadata": {
+        "description": "Azure Cognitive Services Account Name"
+      }
+    },
+    "anomalyDetectorName": {
+      "type": "string",
+      "defaultValue": "[format('azanomalydetector{0}', parameters('uniqueSuffix'))]",
+      "metadata": {
+        "description": "Azure Anomaly Detector Account Name"
+      }
+    },
+    "eventHubNamespaceName": {
+      "type": "string",
+      "defaultValue": "[format('azeventhubns{0}', parameters('uniqueSuffix'))]",
+      "metadata": {
+        "description": "Azure EventHub Namespace Name"
+      }
+    },
+    "eventHubName": {
+      "type": "string",
+      "defaultValue": "[format('azeventhub{0}', parameters('uniqueSuffix'))]",
+      "metadata": {
+        "description": "Azure EventHub Name"
+      }
+    },
+    "eventHubSku": {
+      "type": "string",
+      "defaultValue": "Standard",
+      "metadata": {
+        "description": "Azure EventHub SKU"
+      }
+    },
+    "eventHubPartitionCount": {
+      "type": "int",
+      "defaultValue": 1,
+      "metadata": {
+        "description": "Azure EventHub Partition Count"
+      }
+    },
+    "streamAnalyticsJobName": {
+      "type": "string",
+      "defaultValue": "[format('azstreamjob{0}', parameters('uniqueSuffix'))]",
+      "metadata": {
+        "description": "Azure Stream Analytics Job Name"
+      }
+    },
+    "streamAnalyticsJobSku": {
+      "type": "string",
+      "defaultValue": "Standard",
+      "metadata": {
+        "description": "Azure Stream Analytics Job Name"
+      }
+    },
+    "privateContainerNames": {
+      "type": "array",
+      "defaultValue": [
+        "[parameters('dataLakeRawZoneName')]",
+        "[parameters('dataLakeTrustedZoneName')]",
+        "[parameters('dataLakeCuratedZoneName')]",
+        "[parameters('dataLakeSandpitZoneName')]",
+        "[parameters('synapseDefaultContainerName')]"
+      ]
+    }
+  },
+  "functions": [],
+  "variables": {
+    "dataLakeStorageAccountUrl": "[format('https://{0}.dfs.core.windows.net', parameters('dataLakeAccountName'))]",
+    "azureRBACStorageBlobDataContributorRoleID": "ba92f5b4-2d11-453d-a403-e96b0029c9fe",
+    "azureRBACStorageBlobDataReaderRoleID": "2a2b9908-6ea1-4ae2-8e65-a410df84e7d1",
+    "azureRBACReaderRoleID": "acdd72a7-3385-48ef-bd42-f606fba81ae7",
+    "azureRBACOwnerRoleID": "8e3af657-a8ff-443c-a75c-2fe8c4bcb635",
+    "deploymentScriptUAMIName": "[toLower(format('{0}-uami', resourceGroup().name))]",
+    "synapsePostDeploymentPSScript": "param(\r\n  [string] $WorkspaceName,\r\n  [string] $SynapseSqlAdminUserName,\r\n  [string] $SynapseSqlAdminPassword,\r\n  [string] $KeyVaultName,\r\n  [string] $UAMIIdentityID,\r\n  [string] $AzMLSynapseLinkedServiceIdentityID,\r\n  [string] $PurviewAccountName,\r\n  [string] $AzureMLWorkspaceName,\r\n  [string] $SQLServerlessDBName\r\n)\r\n\r\n$Context = Get-AzContext\r\n$tenantID = $Context.Tenant.Id\r\n\r\n#Try {\r\n#  Write-Host \"Getting secrets from KeyVault\"\r\n#  $AADDirectoryReaderPrincipalID = Get-AzKeyVaultSecret -VaultName $KeyVaultName -Name \"AADDirectoryReaderPrincipalID\" -AsPlainText\r\n#  $SecureString = $AADDirectoryReaderPrincipalID | ConvertTo-SecureString -AsPlainText -Force\r\n#  $Cred = New-Object System.Management.Automation.PSCredential \"ignore\", $AADDirectoryReaderPrincipalID\r\n#}\r\n#Catch {\r\n#  $ErrorMessage = \"Failed to retrieve the secret from $($KeyVault).\"\r\n#  $ErrorMessage += \" `n\"\r\n#  $ErrorMessage += 'Error: '\r\n#  $ErrorMessage += $_\r\n#  Write-Error -Message $ErrorMessage `\r\n#              -ErrorAction Stop\r\n#}\r\n\r\n#------------------------------------------------------------------------------------------------------------\r\n# ASSIGN WORKSPACE ADMINISTRATOR TO USER-ASSIGNED MANAGED IDENTITY\r\n#------------------------------------------------------------------------------------------------------------\r\n\r\n$token = (Get-AzAccessToken -Resource \"https://dev.azuresynapse.net\").Token\r\n$headers = @{ Authorization = \"Bearer $token\" }\r\n$retries = 10\r\n$secondsDelay = 30\r\n\r\n$uri = \"https://$WorkspaceName.dev.azuresynapse.net/rbac/roleAssignments?api-version=2020-02-01-preview\" \r\n\r\n#Assign Synapse Workspace Administrator Role to UAMI\r\n$body = \"{\r\n  roleId: \"\"6e4bf58a-b8e1-4cc3-bbf9-d73143322b78\"\",\r\n  principalId: \"\"$UAMIIdentityID\"\"\r\n}\"\r\n\r\nWrite-Host \"Assign Synapse Administrator Role to UAMI...\"\r\n$result = Invoke-RestMethod -Method Post -ContentType \"application/json\" -Uri $uri -Headers $headers -Body $body\r\n\r\n#------------------------------------------------------------------------------------------------------------\r\n# ASSIGN SYNAPSE APACHE SPARK ADMINISTRATOR TO AZURE ML LINKED SERVICE MSI\r\n#------------------------------------------------------------------------------------------------------------\r\n\r\n#Assign Synapse Apache Spark Administrator Role to Azure ML Linked Service Managed Identity\r\n# https://docs.microsoft.com/en-us/azure/machine-learning/how-to-link-synapse-ml-workspaces#link-workspaces-with-the-python-sdk\r\n\r\n$body = \"{\r\n  roleId: \"\"c3a6d2f1-a26f-4810-9b0f-591308d5cbf1\"\",\r\n  principalId: \"\"$AzMLSynapseLinkedServiceIdentityID\"\"\r\n}\"\r\n\r\nWrite-Host \"Assign Synapse Apache Spark Administrator Role to Azure ML Linked Service Managed Identity...\"\r\n$result = Invoke-RestMethod -Method Post -ContentType \"application/json\" -Uri $uri -Headers $headers -Body $body\r\n\r\n# From: https://docs.microsoft.com/en-us/azure/synapse-analytics/security/how-to-manage-synapse-rbac-role-assignments\r\n# Changes made to Synapse RBAC role assignments may take 2-5 minutes to take effect.\r\n# Retry logic required before calling further APIs\r\n\r\n#------------------------------------------------------------------------------------------------------------\r\n# CREATE AZURE KEY VAULT LINKED SERVICE\r\n#------------------------------------------------------------------------------------------------------------\r\n\r\n#Create AKV Linked Service. Linked Service name same as Key Vault's.\r\n$uri = \"https://$WorkspaceName.dev.azuresynapse.net\" \r\n$uri += \"/linkedservices/$KeyVaultName\"\r\n$uri += \"?api-version=2019-06-01-preview\"\r\n\r\n$body = \"{\r\n  name: \"\"$linkedServiceName\"\",\r\n  properties: {\r\n      annotations: [],\r\n      type: \"\"AzureKeyVault\"\",\r\n      typeProperties: {\r\n          baseUrl: \"\"https://$KeyVaultName.vault.azure.net/\"\"\r\n      }\r\n  }\r\n}\"\r\n\r\nWrite-Host \"Create Azure Key Vault Linked Service...\"\r\n$retrycount = 1\r\n$completed = $false\r\n\r\nwhile (-not $completed) {\r\n  try {\r\n    $result = Invoke-RestMethod -Method Put -ContentType \"application/json\" -Uri $uri -Headers $headers -Body $body -ErrorAction Stop\r\n    Write-Host \"Role assignment successful.\"\r\n    $completed = $true\r\n  }\r\n  catch {\r\n    if ($retrycount -ge $retries) {\r\n        Write-Host \"Role assignment failed the maximum number of $retryCount times.\"\r\n        throw\r\n    } else {\r\n        Write-Host \"Role assignment failed $retryCount time(s). Retrying in $secondsDelay seconds.\"\r\n        Start-Sleep $secondsDelay\r\n        $retrycount++\r\n    }\r\n  }\r\n}\r\n\r\n#------------------------------------------------------------------------------------------------------------\r\n# CONFIGURE SQL LOGIN AND PERMISSIONS REQUIRED FOR AZURE PURVIEW\r\n#------------------------------------------------------------------------------------------------------------\r\n\r\n#If(-not(Get-InstalledModule SqlServer -ErrorAction silentlycontinue)) {\r\n#  Set-PSRepository PSGallery -InstallationPolicy Trusted\r\n#  Install-Module SqlServer -Confirm:$False -Force\r\n#}\r\n#\r\n##Configure SQL Serverless and Dedicated SQL Pool with access for Azure Purview.\r\n#$sqlServerlessEndpoint = \"$WorkspaceName-ondemand.sql.azuresynapse.net\"\r\n#$sqlDedicatedPoolEndpoint = \"$WorkspaceName.sql.azuresynapse.net\"\r\n#\r\n##Retrieve AccessToken for UAMI\r\n#$access_token = (Get-AzAccessToken -ResourceUrl https://sql.azuresynapse.net).Token\r\n#\r\n##Create SQL Serverless Database\r\n#$SQLServerlessDatabaseName = \"SQLServerlessDB\"\r\n#$sql = \"CREATE DATABASE $SQLServerlessDatabaseName\r\n#go\r\n#CREATE LOGIN [$PurviewAccountName] FROM EXTERNAL PROVIDER;\r\n#ALTER SERVER ROLE sysadmin ADD MEMBER [$PurviewAccountName];\"\r\n#\r\n#Write-Host $sql\r\n#\r\n##Create Login for Azure Purview and set it as sysadmin \r\n##as per https://docs.microsoft.com/en-us/azure/purview/register-scan-synapse-workspace#setting-up-authentication-for-enumerating-serverless-sql-database-resources-under-a-synapse-workspace\r\n#\r\n#$retrycount = 1\r\n#$retries = 2\r\n#$secondsDelay = 30\r\n#$completed = $false\r\n#\r\n#while (-not $completed) {\r\n#  try {\r\n#    $result = Invoke-Sqlcmd -ServerInstance $sqlServerlessEndpoint -Database master -AccessToken $access_token -query $sql\r\n#    #$result = Invoke-Sqlcmd -ServerInstance $sqlServerlessEndpoint -Database master -UserName $SynapseSqlAdminUserName -Password $SynapseSqlAdminPassword -query $sql\r\n#    Write-Host \"SQL Serverless config successful.\"\r\n#    Write-Host ($result | ConvertTo-Json)\r\n#    $completed = $true\r\n#  }\r\n#  catch {\r\n#    if ($retrycount -ge $retries) {\r\n#        Write-Host \"SQL Serverless config failed the maximum number of $retryCount times.\"\r\n#        throw\r\n#    } else {\r\n#        Write-Host \"SQL Serverless config $retryCount time(s). Retrying in $secondsDelay seconds.\"\r\n#        Start-Sleep $secondsDelay\r\n#        $retrycount++\r\n#    }\r\n#  }\r\n#}\r\n"
+  },
+  "resources": [
+    {
+      "condition": "[equals(parameters('deploymentMode'), 'vNet')]",
+      "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+      "apiVersion": "2020-11-01",
+      "name": "[format('{0}/{1}', format('{0}-dfs', parameters('dataLakeAccountName')), 'default')]",
+      "properties": {
+        "privateDnsZoneConfigs": [
+          {
+            "name": "privatelink-dfs-core-windows-net",
+            "properties": {
+              "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.dfs.core.windows.net')]"
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/privateEndpoints', format('{0}-dfs', parameters('dataLakeAccountName')))]",
+        "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.dfs.core.windows.net')]"
+      ]
+    },
+    {
+      "condition": "[equals(parameters('deploymentMode'), 'vNet')]",
+      "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+      "apiVersion": "2020-06-01",
+      "name": "[format('{0}/{1}', 'privatelink.dfs.core.windows.net', format('privatelink.dfs.core.windows.net-{0}', parameters('vNetName')))]",
+      "location": "global",
+      "properties": {
+        "virtualNetwork": {
+          "id": "[resourceId('Microsoft.Network/virtualNetworks', parameters('vNetName'))]"
+        },
+        "registrationEnabled": false
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.dfs.core.windows.net')]",
+        "[resourceId('Microsoft.Network/virtualNetworks', parameters('vNetName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Synapse/workspaces/administrators",
+      "apiVersion": "2021-03-01",
+      "name": "[format('{0}/{1}', parameters('synapseWorkspaceName'), 'activeDirectory')]",
+      "properties": {
+        "administratorType": "ActiveDirectory",
+        "tenantId": "[subscription().tenantId]",
+        "sid": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('deploymentScriptUAMIName'))).principalId]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('deploymentScriptUAMIName'))]",
+        "[resourceId('Microsoft.Synapse/workspaces', parameters('synapseWorkspaceName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Synapse/workspaces/sqlPools",
+      "apiVersion": "2021-03-01",
+      "name": "[format('{0}/{1}', parameters('synapseWorkspaceName'), parameters('synapseDedicatedSQLPoolName'))]",
+      "location": "[parameters('resourceLocation')]",
+      "sku": {
+        "name": "[parameters('synapseSQLPoolSKU')]"
+      },
+      "properties": {
+        "createMode": "Default",
+        "collation": "SQL_Latin1_General_CP1_CI_AS"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Synapse/workspaces', parameters('synapseWorkspaceName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Synapse/workspaces/firewallRules",
+      "apiVersion": "2021-03-01",
+      "name": "[format('{0}/{1}', parameters('synapseWorkspaceName'), 'AllowAllNetworks')]",
+      "properties": {
+        "startIpAddress": "0.0.0.0",
+        "endIpAddress": "255.255.255.255"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Synapse/workspaces', parameters('synapseWorkspaceName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Synapse/workspaces/managedIdentitySqlControlSettings",
+      "apiVersion": "2021-03-01",
+      "name": "[format('{0}/{1}', parameters('synapseWorkspaceName'), 'default')]",
+      "properties": {
+        "grantSqlControlToManagedIdentity": {
+          "desiredState": "Enabled"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Synapse/workspaces', parameters('synapseWorkspaceName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Synapse/workspaces/bigDataPools",
+      "apiVersion": "2021-03-01",
+      "name": "[format('{0}/{1}', parameters('synapseWorkspaceName'), parameters('synapseSparkPoolName'))]",
+      "location": "[parameters('resourceLocation')]",
+      "properties": {
+        "autoPause": {
+          "enabled": true,
+          "delayInMinutes": 15
+        },
+        "nodeSize": "[parameters('synapseSparkPoolNodeSize')]",
+        "nodeSizeFamily": "MemoryOptimized",
+        "sparkVersion": "2.4",
+        "autoScale": {
+          "enabled": true,
+          "minNodeCount": "[parameters('synapseSparkPoolMinNodeCount')]",
+          "maxNodeCount": "[parameters('synapseSparkPoolMaxNodeCount')]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Synapse/workspaces', parameters('synapseWorkspaceName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2021-04-01-preview",
+      "name": "[format('{0}/{1}', parameters('keyVaultName'), 'AADDirectoryReaderPrincipalID')]",
+      "properties": {
+        "value": "[parameters('aadDirectoryReaderPrincipalID')]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+      ]
+    },
+    {
+      "condition": "[equals(parameters('ctrlDeployAI'), true())]",
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2021-04-01-preview",
+      "name": "[format('{0}/{1}', parameters('keyVaultName'), format('{0}-Key', parameters('cognitiveServiceAccountName')))]",
+      "properties": {
+        "value": "[listKeys(resourceId('Microsoft.CognitiveServices/accounts', parameters('cognitiveServiceAccountName')), '2017-04-18').key1]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', parameters('cognitiveServiceAccountName'))]",
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+      ]
+    },
+    {
+      "condition": "[equals(parameters('ctrlDeployAI'), true())]",
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2021-04-01-preview",
+      "name": "[format('{0}/{1}', parameters('keyVaultName'), format('{0}-Key', parameters('anomalyDetectorName')))]",
+      "properties": {
+        "value": "[listKeys(resourceId('Microsoft.CognitiveServices/accounts', parameters('anomalyDetectorName')), '2017-04-18').key1]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', parameters('anomalyDetectorName'))]",
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+      ]
+    },
+    {
+      "condition": "[equals(parameters('ctrlDeployAI'), true())]",
+      "type": "Microsoft.MachineLearningServices/workspaces/computes",
+      "apiVersion": "2021-04-01",
+      "name": "[format('{0}/{1}', parameters('azureMLWorkspaceName'), 'SynapseSparkPool')]",
+      "location": "[parameters('resourceLocation')]",
+      "properties": {
+        "computeType": "SynapseSpark",
+        "resourceId": "[resourceId('Microsoft.Synapse/workspaces/bigDataPools', parameters('synapseWorkspaceName'), parameters('synapseSparkPoolName'))]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.MachineLearningServices/workspaces', parameters('azureMLWorkspaceName'))]",
+        "[resourceId('Microsoft.Synapse/workspaces/bigDataPools', parameters('synapseWorkspaceName'), parameters('synapseSparkPoolName'))]"
+      ]
+    },
+    {
+      "condition": "[equals(parameters('ctrlDeployStreaming'), true())]",
+      "type": "Microsoft.EventHub/namespaces/eventhubs",
+      "apiVersion": "2017-04-01",
+      "name": "[format('{0}/{1}', parameters('eventHubNamespaceName'), parameters('eventHubName'))]",
+      "properties": {
+        "messageRetentionInDays": 7,
+        "partitionCount": "[parameters('eventHubPartitionCount')]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.EventHub/namespaces', parameters('eventHubNamespaceName'))]"
+      ]
+    },
+    {
+      "condition": "[equals(parameters('ctrlPostDeployScript'), true())]",
+      "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+      "apiVersion": "2018-11-30",
+      "name": "[variables('deploymentScriptUAMIName')]",
+      "location": "[parameters('resourceLocation')]"
+    },
+    {
+      "condition": "[equals(parameters('deploymentMode'), 'vNet')]",
+      "type": "Microsoft.Network/virtualNetworks",
+      "apiVersion": "2020-11-01",
+      "name": "[parameters('vNetName')]",
+      "location": "[parameters('resourceLocation')]",
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "[parameters('vNetIPAddressPrefix')]"
+          ]
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Network/virtualNetworks/subnets",
+      "apiVersion": "2020-11-01",
+      "name": "[format('{0}/{1}', parameters('vNetName'), parameters('vNetSubnetName'))]",
+      "properties": {
+        "addressPrefix": "[parameters('vNetSubnetIPAddressPrefix')]",
+        "privateEndpointNetworkPolicies": "Disabled"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', parameters('vNetName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2021-02-01",
+      "name": "[parameters('dataLakeAccountName')]",
+      "location": "[parameters('resourceLocation')]",
+      "properties": {
+        "isHnsEnabled": true,
+        "accessTier": "Hot",
+        "allowBlobPublicAccess": "[parameters('ctrlAllowStoragePublicContainer')]",
+        "networkAcls": {
+          "defaultAction": "[if(equals(parameters('deploymentMode'), 'vNet'), 'Deny', 'Allow')]",
+          "bypass": "AzureServices",
+          "virtualNetworkRules": [
+            {
+              "id": "[if(equals(parameters('deploymentMode'), 'vNet'), resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vNetName'), parameters('vNetSubnetName')), '')]",
+              "action": "Allow",
+              "state": "succeeded"
+            }
+          ]
+        }
+      },
+      "kind": "StorageV2",
+      "sku": {
+        "name": "Standard_RAGRS"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vNetName'), parameters('vNetSubnetName'))]"
+      ]
+    },
+    {
+      "condition": "[equals(parameters('deploymentMode'), 'vNet')]",
+      "type": "Microsoft.Network/privateEndpoints",
+      "apiVersion": "2020-11-01",
+      "name": "[format('{0}-dfs', parameters('dataLakeAccountName'))]",
+      "location": "[parameters('resourceLocation')]",
+      "properties": {
+        "subnet": {
+          "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vNetName'), parameters('vNetSubnetName'))]"
+        },
+        "privateLinkServiceConnections": [
+          {
+            "name": "[format('{0}-dfs', parameters('dataLakeAccountName'))]",
+            "properties": {
+              "privateLinkServiceId": "[resourceId('Microsoft.Storage/storageAccounts', parameters('dataLakeAccountName'))]",
+              "groupIds": [
+                "dfs"
+              ]
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('dataLakeAccountName'))]",
+        "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vNetName'), parameters('vNetSubnetName'))]"
+      ]
+    },
+    {
+      "condition": "[equals(parameters('deploymentMode'), 'vNet')]",
+      "type": "Microsoft.Network/privateDnsZones",
+      "apiVersion": "2020-06-01",
+      "name": "privatelink.dfs.core.windows.net",
+      "location": "global"
+    },
+    {
+      "condition": "[equals(parameters('deploymentMode'), 'vNet')]",
+      "type": "Microsoft.Storage/storageAccounts/privateEndpointConnections",
+      "apiVersion": "2021-02-01",
+      "name": "[format('{0}/{1}', parameters('dataLakeAccountName'), guid(parameters('dataLakeAccountName')))]",
+      "properties": {
+        "provisioningState": "Succeeded",
+        "privateLinkServiceConnectionState": {
+          "status": "Approved",
+          "description": "Auto-Approved",
+          "actionRequired": "None"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('dataLakeAccountName'))]"
+      ]
+    },
+    {
+      "copy": {
+        "name": "r_dataLakePrivateContainer",
+        "count": "[length(parameters('privateContainerNames'))]"
+      },
+      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+      "apiVersion": "2021-02-01",
+      "name": "[format('{0}/default/{1}', parameters('dataLakeAccountName'), parameters('privateContainerNames')[copyIndex()])]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('dataLakeAccountName'))]"
+      ]
+    },
+    {
+      "condition": "[equals(parameters('ctrlAllowStoragePublicContainer'), true())]",
+      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+      "apiVersion": "2021-02-01",
+      "name": "[format('{0}/default/{1}', parameters('dataLakeAccountName'), parameters('dataLakePublicZoneName'))]",
+      "properties": {
+        "publicAccess": "Blob"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('dataLakeAccountName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Synapse/workspaces",
+      "apiVersion": "2021-03-01",
+      "name": "[parameters('synapseWorkspaceName')]",
+      "location": "[parameters('resourceLocation')]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "defaultDataLakeStorage": {
+          "accountUrl": "[variables('dataLakeStorageAccountUrl')]",
+          "filesystem": "[parameters('synapseDefaultContainerName')]"
+        },
+        "sqlAdministratorLogin": "[parameters('synapseSqlAdminUserName')]",
+        "sqlAdministratorLoginPassword": "[parameters('synapseSqlAdminPassword')]",
+        "managedResourceGroupName": "[parameters('synapseManagedRGName')]",
+        "purviewConfiguration": {
+          "purviewResourceId": "[resourceId('Microsoft.Purview/accounts', parameters('purviewAccountName'))]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Purview/accounts', parameters('purviewAccountName'))]"
+      ]
+    },
+    {
+      "condition": "[equals(parameters('ctrlDeployAI'), true())]",
+      "type": "Microsoft.CognitiveServices/accounts",
+      "apiVersion": "2017-04-18",
+      "name": "[parameters('cognitiveServiceAccountName')]",
+      "location": "[parameters('resourceLocation')]",
+      "kind": "CognitiveServices",
+      "sku": {
+        "name": "S0"
+      }
+    },
+    {
+      "condition": "[equals(parameters('ctrlDeployAI'), true())]",
+      "type": "Microsoft.CognitiveServices/accounts",
+      "apiVersion": "2017-04-18",
+      "name": "[parameters('anomalyDetectorName')]",
+      "location": "[parameters('resourceLocation')]",
+      "kind": "AnomalyDetector",
+      "sku": {
+        "name": "S0"
+      }
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults",
+      "apiVersion": "2021-04-01-preview",
+      "name": "[parameters('keyVaultName')]",
+      "location": "[parameters('resourceLocation')]",
+      "properties": {
+        "tenantId": "[subscription().tenantId]",
+        "enabledForDeployment": true,
+        "enableSoftDelete": true,
+        "sku": {
+          "name": "standard",
+          "family": "A"
+        },
+        "networkAcls": {
+          "defaultAction": "Allow",
+          "bypass": "AzureServices"
+        },
+        "accessPolicies": [
+          {
+            "objectId": "[reference(resourceId('Microsoft.Synapse/workspaces', parameters('synapseWorkspaceName')), '2021-03-01', 'full').identity.principalId]",
+            "tenantId": "[subscription().tenantId]",
+            "permissions": {
+              "secrets": [
+                "get",
+                "list"
+              ]
+            }
+          },
+          {
+            "objectId": "[reference(resourceId('Microsoft.Purview/accounts', parameters('purviewAccountName')), '2020-12-01-preview', 'full').identity.principalId]",
+            "tenantId": "[subscription().tenantId]",
+            "permissions": {
+              "secrets": [
+                "get",
+                "list"
+              ]
+            }
+          },
+          {
+            "objectId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('deploymentScriptUAMIName'))).principalId]",
+            "tenantId": "[subscription().tenantId]",
+            "permissions": {
+              "secrets": [
+                "get",
+                "list",
+                "set"
+              ]
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('deploymentScriptUAMIName'))]",
+        "[resourceId('Microsoft.Purview/accounts', parameters('purviewAccountName'))]",
+        "[resourceId('Microsoft.Synapse/workspaces', parameters('synapseWorkspaceName'))]"
+      ]
+    },
+    {
+      "condition": "[equals(parameters('crtlDeployDataShare'), true())]",
+      "type": "Microsoft.DataShare/accounts",
+      "apiVersion": "2020-09-01",
+      "name": "[parameters('dataShareAccountName')]",
+      "location": "[parameters('resourceLocation')]",
+      "identity": {
+        "type": "SystemAssigned"
+      }
+    },
+    {
+      "condition": "[equals(parameters('ctrlDeployPurview'), true())]",
+      "type": "Microsoft.Purview/accounts",
+      "apiVersion": "2020-12-01-preview",
+      "name": "[parameters('purviewAccountName')]",
+      "location": "[parameters('resourceLocation')]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "sku": {
+        "name": "Standard",
+        "capacity": 4
+      },
+      "properties": {
+        "publicNetworkAccess": "Enabled"
+      }
+    },
+    {
+      "condition": "[equals(parameters('ctrlDeployAI'), true())]",
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2021-02-01",
+      "name": "[parameters('azureMLStorageAccountName')]",
+      "location": "[parameters('resourceLocation')]",
+      "kind": "StorageV2",
+      "sku": {
+        "name": "Standard_LRS",
+        "tier": "Standard"
+      },
+      "properties": {
+        "encryption": {
+          "services": {
+            "blob": {
+              "enabled": true
+            },
+            "file": {
+              "enabled": true
+            }
+          },
+          "keySource": "Microsoft.Storage"
+        }
+      }
+    },
+    {
+      "condition": "[equals(parameters('ctrlDeployAI'), true())]",
+      "type": "Microsoft.Insights/components",
+      "apiVersion": "2020-02-02-preview",
+      "name": "[parameters('azureMLAppInsightsName')]",
+      "location": "[parameters('resourceLocation')]",
+      "kind": "web",
+      "properties": {
+        "Application_Type": "web"
+      }
+    },
+    {
+      "condition": "[equals(parameters('ctrlDeployAI'), true())]",
+      "type": "Microsoft.MachineLearningServices/workspaces",
+      "apiVersion": "2021-04-01",
+      "name": "[parameters('azureMLWorkspaceName')]",
+      "location": "[parameters('resourceLocation')]",
+      "sku": {
+        "name": "Basic",
+        "tier": "Basic"
+      },
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "friendlyName": "[parameters('azureMLWorkspaceName')]",
+        "keyVault": "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+        "storageAccount": "[resourceId('Microsoft.Storage/storageAccounts', parameters('azureMLStorageAccountName'))]",
+        "applicationInsights": "[resourceId('Microsoft.Insights/components', parameters('azureMLAppInsightsName'))]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Insights/components', parameters('azureMLAppInsightsName'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('azureMLStorageAccountName'))]",
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+      ]
+    },
+    {
+      "condition": "[equals(parameters('ctrlDeployAI'), true())]",
+      "type": "Microsoft.MachineLearningServices/workspaces/linkedServices",
+      "apiVersion": "2020-09-01-preview",
+      "name": "[format('{0}/{1}', parameters('azureMLWorkspaceName'), parameters('synapseWorkspaceName'))]",
+      "location": "[parameters('resourceLocation')]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "linkedServiceResourceId": "[resourceId('Microsoft.Synapse/workspaces', parameters('synapseWorkspaceName'))]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.MachineLearningServices/workspaces', parameters('azureMLWorkspaceName'))]",
+        "[resourceId('Microsoft.Synapse/workspaces', parameters('synapseWorkspaceName'))]"
+      ]
+    },
+    {
+      "condition": "[equals(parameters('ctrlDeployStreaming'), true())]",
+      "type": "Microsoft.EventHub/namespaces",
+      "apiVersion": "2017-04-01",
+      "name": "[parameters('eventHubNamespaceName')]",
+      "location": "[parameters('resourceLocation')]",
+      "sku": {
+        "name": "[parameters('eventHubSku')]",
+        "tier": "[parameters('eventHubSku')]",
+        "capacity": 1
+      }
+    },
+    {
+      "condition": "[equals(parameters('ctrlDeployStreaming'), true())]",
+      "type": "Microsoft.StreamAnalytics/streamingjobs",
+      "apiVersion": "2017-04-01-preview",
+      "name": "[parameters('streamAnalyticsJobName')]",
+      "location": "[parameters('resourceLocation')]",
+      "properties": {
+        "sku": {
+          "name": "[parameters('streamAnalyticsJobSku')]"
+        }
+      }
+    },
+    {
+      "condition": "[equals(parameters('ctrlDeployAzureRBAC'), true())]",
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2020-04-01-preview",
+      "scope": "[format('Microsoft.Storage/storageAccounts/{0}', parameters('dataLakeAccountName'))]",
+      "name": "[guid(parameters('synapseWorkspaceName'), parameters('dataLakeAccountName'))]",
+      "properties": {
+        "roleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('azureRBACStorageBlobDataContributorRoleID'))]",
+        "principalId": "[reference(resourceId('Microsoft.Synapse/workspaces', parameters('synapseWorkspaceName')), '2021-03-01', 'full').identity.principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('dataLakeAccountName'))]",
+        "[resourceId('Microsoft.Synapse/workspaces', parameters('synapseWorkspaceName'))]"
+      ]
+    },
+    {
+      "condition": "[equals(parameters('ctrlDeployAzureRBAC'), true())]",
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2020-04-01-preview",
+      "name": "[guid(resourceGroup().name, parameters('purviewAccountName'), 'Reader')]",
+      "properties": {
+        "roleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('azureRBACReaderRoleID'))]",
+        "principalId": "[reference(resourceId('Microsoft.Purview/accounts', parameters('purviewAccountName')), '2020-12-01-preview', 'full').identity.principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Purview/accounts', parameters('purviewAccountName'))]"
+      ]
+    },
+    {
+      "condition": "[equals(parameters('ctrlDeployAzureRBAC'), true())]",
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2020-04-01-preview",
+      "name": "[guid(resourceGroup().name, parameters('purviewAccountName'), 'Storage Blob Reader')]",
+      "properties": {
+        "roleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('azureRBACStorageBlobDataReaderRoleID'))]",
+        "principalId": "[reference(resourceId('Microsoft.Purview/accounts', parameters('purviewAccountName')), '2020-12-01-preview', 'full').identity.principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Purview/accounts', parameters('purviewAccountName'))]"
+      ]
+    },
+    {
+      "condition": "[equals(parameters('ctrlDeployAzureRBAC'), true())]",
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2020-04-01-preview",
+      "scope": "[format('Microsoft.Storage/storageAccounts/{0}', parameters('dataLakeAccountName'))]",
+      "name": "[guid(parameters('dataLakeAccountName'), parameters('azureMLWorkspaceName'), 'Storage Blob Data Reader')]",
+      "properties": {
+        "roleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('azureRBACStorageBlobDataReaderRoleID'))]",
+        "principalId": "[reference(resourceId('Microsoft.MachineLearningServices/workspaces', parameters('azureMLWorkspaceName')), '2021-04-01', 'full').identity.principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.MachineLearningServices/workspaces', parameters('azureMLWorkspaceName'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('dataLakeAccountName'))]"
+      ]
+    },
+    {
+      "condition": "[equals(parameters('ctrlDeployAzureRBAC'), true())]",
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2020-04-01-preview",
+      "scope": "[format('Microsoft.Storage/storageAccounts/{0}', parameters('dataLakeAccountName'))]",
+      "name": "[guid(parameters('dataLakeAccountName'), parameters('dataShareAccountName'), 'Storage Blob Data Reader')]",
+      "properties": {
+        "roleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('azureRBACStorageBlobDataReaderRoleID'))]",
+        "principalId": "[reference(resourceId('Microsoft.DataShare/accounts', parameters('dataShareAccountName')), '2020-09-01', 'full').identity.principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('dataLakeAccountName'))]",
+        "[resourceId('Microsoft.DataShare/accounts', parameters('dataShareAccountName'))]"
+      ]
+    },
+    {
+      "condition": "[equals(parameters('ctrlDeployAzureRBAC'), true())]",
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2020-04-01-preview",
+      "scope": "[format('Microsoft.Synapse/workspaces/{0}', parameters('synapseWorkspaceName'))]",
+      "name": "[guid(parameters('synapseWorkspaceName'), variables('deploymentScriptUAMIName'))]",
+      "properties": {
+        "roleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', variables('azureRBACOwnerRoleID'))]",
+        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('deploymentScriptUAMIName'))).principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('deploymentScriptUAMIName'))]",
+        "[resourceId('Microsoft.Synapse/workspaces', parameters('synapseWorkspaceName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deploymentScripts",
+      "apiVersion": "2020-10-01",
+      "name": "SynapsePostDeploymentScript",
+      "location": "[parameters('resourceLocation')]",
+      "kind": "AzurePowerShell",
+      "identity": {
+        "type": "UserAssigned",
+        "userAssignedIdentities": {
+          "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('deploymentScriptUAMIName'))]": {}
+        }
+      },
+      "properties": {
+        "azPowerShellVersion": "3.0",
+        "cleanupPreference": "OnExpiration",
+        "retentionInterval": "P1D",
+        "timeout": "PT30M",
+        "arguments": "[format('-WorkspaceName {0} -SynapseSqlAdminUserName {1} -SynapseSqlAdminPassword {2} -UAMIIdentityID {3} -KeyVaultName {4} -PurviewAccountName {5} -AzureMLWorkspaceName {6} -AzMLSynapseLinkedServiceIdentityID {7}', parameters('synapseWorkspaceName'), parameters('synapseSqlAdminUserName'), parameters('synapseSqlAdminPassword'), reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('deploymentScriptUAMIName'))).principalId, parameters('keyVaultName'), parameters('purviewAccountName'), parameters('azureMLWorkspaceName'), reference(resourceId('Microsoft.MachineLearningServices/workspaces/linkedServices', parameters('azureMLWorkspaceName'), parameters('synapseWorkspaceName')), '2020-09-01-preview', 'full').identity.principalId)]",
+        "scriptContent": "[variables('synapsePostDeploymentPSScript')]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.MachineLearningServices/workspaces/linkedServices', parameters('azureMLWorkspaceName'), parameters('synapseWorkspaceName'))]",
+        "[resourceId('Microsoft.MachineLearningServices/workspaces', parameters('azureMLWorkspaceName'))]",
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('deploymentScriptUAMIName'))]",
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+        "[resourceId('Microsoft.Purview/accounts', parameters('purviewAccountName'))]",
+        "[resourceId('Microsoft.Synapse/workspaces', parameters('synapseWorkspaceName'))]",
+        "[extensionResourceId(resourceId('Microsoft.Synapse/workspaces', parameters('synapseWorkspaceName')), 'Microsoft.Authorization/roleAssignments', guid(parameters('synapseWorkspaceName'), variables('deploymentScriptUAMIName')))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "dataLakeStorageAccountID": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.Storage/storageAccounts', parameters('dataLakeAccountName'))]"
+    },
+    "synapseWorkspaceID": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.Synapse/workspaces', parameters('synapseWorkspaceName'))]"
+    }
+  }
+}
