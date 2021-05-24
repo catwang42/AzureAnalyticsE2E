@@ -1075,7 +1075,7 @@ resource r_synapseWorkspaceOwnerRoleAssignment 'Microsoft.Authorization/roleAssi
 //********************************************************
 
 //Synapse Deployment Script
-var synapsePostDeploymentPSScript = './scripts/PostDeploy.ps1'
+var synapsePostDeploymentPSScript = 'https://raw.githubusercontent.com/fabragaMS/AzureAnalyticsE2E/master/Deploy/scripts/PostDeploy.ps1'
 
 resource r_synapsePostDeploymentScript 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
   name:'SynapsePostDeploymentScript'
@@ -1095,9 +1095,9 @@ resource r_synapsePostDeploymentScript 'Microsoft.Resources/deploymentScripts@20
     cleanupPreference: 'OnExpiration'
     retentionInterval: 'P1D'
     timeout:'PT30M'
-    arguments: '-DeploymentMode ${deploymentMode} -WorkspaceName ${r_synapseWorkspace.name} -SynapseSqlAdminUserName ${synapseSqlAdminUserName} -SynapseSqlAdminPassword ${synapseSqlAdminPassword} -UAMIIdentityID ${r_deploymentScriptUAMI.properties.principalId} -KeyVaultName ${r_keyVault.name} -KeyVaultID ${r_keyVault.id} -PurviewAccountName ${r_purviewAccount.name} -AzureMLWorkspaceName ${r_azureMLWorkspace.name} -AzMLSynapseLinkedServiceIdentityID ${r_azureMLSynapseLinkedService.identity.principalId} -DataLakeStorageAccountName ${r_dataLakeStorageAccount.name} -DataLakeStorageAccountID ${r_dataLakeStorageAccount.id}'
-    
-    scriptContent: synapsePostDeploymentPSScript
+    arguments: '-DeploymentMode ${deploymentMode} -WorkspaceName ${r_synapseWorkspace.name} -UAMIIdentityID ${r_deploymentScriptUAMI.properties.principalId} -KeyVaultName ${r_keyVault.name} -KeyVaultID ${r_keyVault.id} -PurviewAccountName ${r_purviewAccount.name} -AzureMLWorkspaceName ${r_azureMLWorkspace.name} -AzMLSynapseLinkedServiceIdentityID ${r_azureMLSynapseLinkedService.identity.principalId} -DataLakeStorageAccountName ${r_dataLakeStorageAccount.name} -DataLakeStorageAccountID ${r_dataLakeStorageAccount.id}'
+    primaryScriptUri: synapsePostDeploymentPSScript
+    //scriptContent: synapsePostDeploymentPSScript
   }
 }
 
