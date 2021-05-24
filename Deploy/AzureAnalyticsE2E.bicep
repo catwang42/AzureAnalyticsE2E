@@ -92,7 +92,7 @@ param synapseManagedRGName string = '${synapseWorkspaceName}-mrg'
 param synapseDedicatedSQLPoolName string = 'EnterpriseDW'
 
 @description('SQL Pool SKU')
-param synapseSQLPoolSKU string = 'DW200c'
+param synapseSQLPoolSKU string = 'DW100c'
 
 @description('Spark Pool Name')
 param synapseSparkPoolName string = 'SparkCluster'
@@ -279,26 +279,6 @@ module m_privateDNSZoneStorageDFS './modules/PrivateDNSZone.bicep' = if(deployme
   }
 }
 
-
-////Private DNS zone for privatelink.dfs.core.windows.net
-// resource r_privateDNSZoneStorageDFS 'Microsoft.Network/privateDnsZones@2020-06-01' = if(deploymentMode == 'vNet') {
-//   name: 'privatelink.dfs.core.windows.net'
-//   location: 'global'
-
-//   resource r_vNetPrivateDNSZoneStorageDFSLink 'virtualNetworkLinks' = {
-//     name: 'privatelink.dfs.core.windows.net-${r_vNet.name}'
-//     location: 'global'
-//     properties:{
-//       virtualNetwork:{
-//         id:r_vNet.id
-//       }
-//       registrationEnabled:false
-//     }
-//   }
-// }
-
-//Data Lake Zone Containers
-
 param privateContainerNames array = [
   dataLakeRawZoneName
   dataLakeTrustedZoneName
@@ -365,12 +345,21 @@ resource r_synapseWorkspace 'Microsoft.Synapse/workspaces@2021-03-01' = {
     }
   }
 
-  //Default Frewall Rules
-  resource r_synapseWorkspaceDefaultFirewall 'firewallRules' = if (deploymentMode == 'default'){
+  //Default Firewall Rules - Allow All Traffic
+  resource r_synapseWorkspaceFirewallAllowAll 'firewallRules' = if (deploymentMode == 'default'){
     name: 'AllowAllNetworks'
     properties:{
       startIpAddress: '0.0.0.0'
       endIpAddress: '255.255.255.255'
+    }
+  }
+
+  //Firewall Allow Azure Sevices
+  resource r_synapseWorkspaceFirewallAllowAzure 'firewallRules' = {
+    name: 'AllowAllWindowsAzureIps'
+    properties:{
+      startIpAddress: '0.0.0.0'
+      endIpAddress: '0.0.0.0'
     }
   }
 

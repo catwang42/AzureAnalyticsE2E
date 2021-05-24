@@ -17,6 +17,8 @@ $secondsDelay = 30
 # ASSIGN WORKSPACE ADMINISTRATOR TO USER-ASSIGNED MANAGED IDENTITY
 #------------------------------------------------------------------------------------------------------------
 
+#Connect-AzAccount -Subscription 96bd7145-ad7f-445a-9763-862e32480bf1
+
 $token = (Get-AzAccessToken -Resource "https://dev.azuresynapse.net").Token
 $headers = @{ Authorization = "Bearer $token" }
 
@@ -29,7 +31,6 @@ $body = "{
 }"
 
 Write-Host "Assign Synapse Administrator Role to UAMI..."
-Write-Host $body
 
 $result = Invoke-RestMethod -Method Post -ContentType "application/json" -Uri $uri -Headers $headers -Body $body
 
