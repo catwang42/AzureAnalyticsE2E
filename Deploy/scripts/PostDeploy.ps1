@@ -32,14 +32,15 @@ param(
 #              -ErrorAction Stop
 #}
 
+$retries = 10
+$secondsDelay = 30
+
 #------------------------------------------------------------------------------------------------------------
 # ASSIGN WORKSPACE ADMINISTRATOR TO USER-ASSIGNED MANAGED IDENTITY
 #------------------------------------------------------------------------------------------------------------
 
 $token = (Get-AzAccessToken -Resource "https://dev.azuresynapse.net").Token
 $headers = @{ Authorization = "Bearer $token" }
-$retries = 10
-$secondsDelay = 30
 
 $uri = "https://$WorkspaceName.dev.azuresynapse.net/rbac/roleAssignments?api-version=2020-02-01-preview"
 
@@ -50,7 +51,9 @@ $body = "{
 }"
 
 Write-Host "Assign Synapse Administrator Role to UAMI..."
-Invoke-RestMethod -Method Post -ContentType "application/json" -Uri $uri -Headers $headers -Body $body
+Write-Host $body
+
+$result = Invoke-RestMethod -Method Post -ContentType "application/json" -Uri $uri -Headers $headers -Body $body
 
 #------------------------------------------------------------------------------------------------------------
 # ASSIGN SYNAPSE APACHE SPARK ADMINISTRATOR TO AZURE ML LINKED SERVICE MSI
