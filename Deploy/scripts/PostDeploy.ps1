@@ -101,6 +101,7 @@ while (-not $completed) {
 
 [string[]] $managedPrivateEndpointNames = $KeyVaultName, $DataLakeStorageAccountName
 [string[]] $managedPrivateEndpointIDs = $KeyVaultID, $DataLakeStorageAccountID
+[string[]] $managedPrivateEndpointGroups = 'vault', 'dfs'
 
 if ($DeploymentMode -eq "vNet") {
 
@@ -115,7 +116,7 @@ if ($DeploymentMode -eq "vNet") {
             type: ""Microsoft.Synapse/workspaces/managedVirtualNetworks/managedPrivateEndpoints"",
             properties: {
                 privateLinkResourceId: ""$managedPrivateEndpointIDs[$i]"",
-                groupId: ""vault"",
+                groupId: ""$managedPrivateEndpointGroups[$i]"",
                 provisioningState: ""Succeeded"",
                 privateLinkServiceConnectionState: {
                 status: ""Approved"",
