@@ -52,6 +52,9 @@ param vNetSubnetIPAddressPrefix string = '10.1.0.0/24'
 @description('Data Lake Storage Account Name')
 param dataLakeAccountName string = 'azdatalake${uniqueSuffix}'
 
+@description('Allow Shared Key Authorisation')
+param allowSharedKeyAccess bool = false
+
 @description('Data Lake Raw Zone Container Name')
 param dataLakeRawZoneName string = 'raw'
 
@@ -223,6 +226,7 @@ resource r_dataLakeStorageAccount 'Microsoft.Storage/storageAccounts@2021-02-01'
     isHnsEnabled: true
     accessTier:'Hot'
     allowBlobPublicAccess: (ctrlAllowStoragePublicContainer && deploymentMode != 'vNet')
+    allowSharedKeyAccess: allowSharedKeyAccess
     networkAcls: {
       defaultAction: (deploymentMode == 'vNet')? 'Deny' : 'Allow'
       bypass:'AzureServices'
@@ -355,6 +359,7 @@ resource r_synapseWorkspace 'Microsoft.Synapse/workspaces@2021-03-01' = {
   }
 
   //Firewall Allow Azure Sevices
+  //Required for Post-Deployment Scripts
   resource r_synapseWorkspaceFirewallAllowAzure 'firewallRules' = {
     name: 'AllowAllWindowsAzureIps'
     properties:{
