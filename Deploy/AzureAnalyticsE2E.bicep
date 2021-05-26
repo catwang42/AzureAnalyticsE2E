@@ -52,7 +52,7 @@ param vNetSubnetIPAddressPrefix string = '10.1.0.0/24'
 @description('Data Lake Storage Account Name')
 param dataLakeAccountName string = 'azdatalake${uniqueSuffix}'
 
-@description('Allow Shared Key Authorisation')
+@description('Allow Shared Key Access')
 param allowSharedKeyAccess bool = false
 
 @description('Data Lake Raw Zone Container Name')

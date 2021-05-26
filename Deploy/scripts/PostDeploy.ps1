@@ -80,15 +80,15 @@ $completed = $false
 while (-not $completed) {
   try {
     Invoke-RestMethod -Method Put -ContentType "application/json" -Uri $uri -Headers $headers -Body $body -ErrorAction Stop
-    Write-Host "Role assignment successful."
+    Write-Host "Linked service created successfully."
     $completed = $true
   }
   catch {
     if ($retrycount -ge $retries) {
-        Write-Host "Role assignment failed the maximum number of $retryCount times."
+        Write-Host "Linked service creation failed the maximum number of $retryCount times."
         throw
     } else {
-        Write-Host "Role assignment failed $retryCount time(s). Retrying in $secondsDelay seconds."
+        Write-Host "Linked service creation failed $retryCount time(s). Retrying in $secondsDelay seconds."
         Start-Sleep $secondsDelay
         $retrycount++
     }
@@ -104,19 +104,22 @@ while (-not $completed) {
 [string[]] $managedPrivateEndpointGroups = 'vault', 'dfs'
 
 if ($DeploymentMode -eq "vNet") {
-
-    for($i = 0; $i -le ($managedPrivateEndpointNames.lenght - 1); $i += 1)
+    for($i = 0; $i -le ($managedPrivateEndpointNames.Length - 1); $i += 1)
     {
+        $managedPrivateEndpointName = $managedPrivateEndpointNames[$i]
+        $managedPrivateEndpointID = $managedPrivateEndpointIDs[$i]
+        $managedPrivateEndpointGroup = $managedPrivateEndpointGroups[$i] 
+
         $uri = "https://$WorkspaceName.dev.azuresynapse.net"
-        $uri += "/managedVirtualNetworks/default/managedPrivateEndpoints/$managedPrivateEndpointNames[$i]"
+        $uri += "/managedVirtualNetworks/default/managedPrivateEndpoints/$managedPrivateEndpointName"
         $uri += "?api-version=2019-06-01-preview"
 
         $body = "{
-            name: ""$managedPrivateEndpointNames[$i]"",
+            name: ""$managedPrivateEndpointName"",
             type: ""Microsoft.Synapse/workspaces/managedVirtualNetworks/managedPrivateEndpoints"",
             properties: {
-                privateLinkResourceId: ""$managedPrivateEndpointIDs[$i]"",
-                groupId: ""$managedPrivateEndpointGroups[$i]"",
+                privateLinkResourceId: ""$managedPrivateEndpointID"",
+                groupId: ""$managedPrivateEndpointGroup"",
                 provisioningState: ""Succeeded"",
                 privateLinkServiceConnectionState: {
                 status: ""Approved"",
@@ -124,23 +127,23 @@ if ($DeploymentMode -eq "vNet") {
                 }
             }
         }"
-    
-        Write-Host "Create Managed Private Endpoint for $managedPrivateEndpointNames[$i]..."
+
+        Write-Host "Create Managed Private Endpoint for $managedPrivateEndpointName..."
         $retrycount = 1
         $completed = $false
         
         while (-not $completed) {
             try {
                 Invoke-RestMethod -Method Put -ContentType "application/json" -Uri $uri -Headers $headers -Body $body -ErrorAction Stop
-                Write-Host "Managed private endpoint for $managedPrivateEndpointNames[$i] created successfully."
+                Write-Host "Managed private endpoint for $managedPrivateEndpointName created successfully."
                 $completed = $true
             }
             catch {
                 if ($retrycount -ge $retries) {
-                    Write-Host "Managed private endpoint for $managedPrivateEndpointNames[$i] creation failed the maximum number of $retryCount times."
+                    Write-Host "Managed private endpoint for $managedPrivateEndpointName creation failed the maximum number of $retryCount times."
                     throw
                 } else {
-                    Write-Host "Managed private endpoint creation for $managedPrivateEndpointNames[$i] failed $retryCount time(s). Retrying in $secondsDelay seconds."
+                    Write-Host "Managed private endpoint creation for $managedPrivateEndpointName failed $retryCount time(s). Retrying in $secondsDelay seconds."
                     Start-Sleep $secondsDelay
                     $retrycount++
                 }
