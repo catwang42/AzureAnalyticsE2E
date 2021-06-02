@@ -642,6 +642,76 @@ resource r_purviewAccount 'Microsoft.Purview/accounts@2020-12-01-preview' = if(c
   }
 }
 
+//Purview Ingestion endpoint: Blob
+module m_privateDNSZoneBlob 'modules/PrivateDNSZone.bicep' = if(deploymentMode == 'vNet') {
+  name: 'privatelink.blob.core.windows.net'
+  params: {
+    dnsZoneName: 'privatelink.blob.core.windows.net-${r_vNet.name}'
+    vNetID: r_vNet.id
+    vNetName: r_vNet.name
+  }
+}
+
+module m_purviewBlobPrivateLink 'modules/PrivateEndpoint.bicep' = if(deploymentMode == 'vNet') {
+  name: 'purviewBlobPrivateLink'
+  params: {
+    groupID: 'blob'
+    privateDnsZoneConfigName: 'privatelink-blob-core-windows-net'
+    privateDnsZoneId: m_privateDNSZoneBlob.outputs.dnsZoneID
+    privateEndpoitName: '${r_purviewAccount.name}-blob'
+    privateLinkServiceId: r_purviewAccount.properties.managedResources.storageAccount
+    resourceLocation: resourceLocation
+    subnetID: r_subNet.id
+  }
+}
+
+
+//Purview Ingestion endpoint: Queue
+module m_privateDNSZoneQueue 'modules/PrivateDNSZone.bicep' = if(deploymentMode == 'vNet') {
+  name: 'privatelink.queue.core.windows.net'
+  params: {
+    dnsZoneName: 'privatelink.queue.core.windows.net-${r_vNet.name}'
+    vNetID: r_vNet.id
+    vNetName: r_vNet.name
+  }
+}
+
+module m_purviewQueuePrivateLink 'modules/PrivateEndpoint.bicep' = if(deploymentMode == 'vNet') {
+  name: 'PurviewQueuePrivateLink'
+  params: {
+    groupID: 'queue'
+    privateDnsZoneConfigName: 'privatelink-queue-core-windows-net'
+    privateDnsZoneId: m_privateDNSZoneQueue.outputs.dnsZoneID
+    privateEndpoitName: '${r_purviewAccount.name}-queue'
+    privateLinkServiceId: r_purviewAccount.properties.managedResources.storageAccount
+    resourceLocation: resourceLocation
+    subnetID: r_subNet.id
+  }
+}
+
+//Purview Ingestion endpoint: Event Hub Namespace
+module m_privateDNSZoneServiceBus 'modules/PrivateDNSZone.bicep' = if(deploymentMode == 'vNet') {
+  name: 'privatelink.servicebus.windows.net'
+  params: {
+    dnsZoneName: 'privatelink.servicebus.windows.net-${r_vNet.name}'
+    vNetID: r_vNet.id
+    vNetName: r_vNet.name
+  }
+}
+
+module m_purviewEventHubPrivateLink 'modules/PrivateEndpoint.bicep' = if(deploymentMode == 'vNet') {
+  name: 'PurviewEventHubPrivateLink'
+  params: {
+    groupID: 'namespace'
+    privateDnsZoneConfigName: 'privatelink-servicebus-windows-net'
+    privateDnsZoneId: m_privateDNSZoneServiceBus.outputs.dnsZoneID
+    privateEndpoitName: '${r_purviewAccount.name}-namespace'
+    privateLinkServiceId: r_purviewAccount.properties.managedResources.eventHubNamespace
+    resourceLocation: resourceLocation
+    subnetID: r_subNet.id
+  }
+}
+
 //Azure ML Storage Account
 resource r_azureMLStorage 'Microsoft.Storage/storageAccounts@2021-02-01' = if(ctrlDeployAI == true) {
   name:azureMLStorageAccountName
@@ -826,14 +896,26 @@ resource r_synapseWorkspaceOwnerRoleAssignment 'Microsoft.Authorization/roleAssi
   }
 }
 
+//Assign Owner Role to UAMI in the Purview Account. UAMI needs to be Owner so it can make calls to Purview APIs from post deployment script.
+resource r_purviewAccountOwnerRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = if (ctrlDeployAzureRBAC == true) {
+  name: guid(r_purviewAccount.name, r_deploymentScriptUAMI.name)
+  scope: r_purviewAccount
+  properties:{
+    roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', azureRBACOwnerRoleID)
+    principalId: r_deploymentScriptUAMI.properties.principalId
+    principalType:'ServicePrincipal'
+  }
+}
+
+
 //********************************************************
 // Post Deployment Scripts
 //********************************************************
 
 //Synapse Deployment Script
-var synapsePostDeploymentPSScript = 'https://raw.githubusercontent.com/fabragaMS/AzureAnalyticsE2E/master/Deploy/scripts/PostDeploy.ps1'
+var synapsePostDeploymentPSScript = 'https://raw.githubusercontent.com/fabragaMS/AzureAnalyticsE2E/master/Deploy/scripts/SynapsePostDeploy.ps1'
 
-resource r_synapsePostDeploymentScript 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
+resource r_synapsePostDeployScript 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
   name:'SynapsePostDeploymentScript'
   dependsOn: [
     r_synapseWorkspaceOwnerRoleAssignment
@@ -853,6 +935,33 @@ resource r_synapsePostDeploymentScript 'Microsoft.Resources/deploymentScripts@20
     timeout:'PT30M'
     arguments: '-DeploymentMode ${deploymentMode} -WorkspaceName ${r_synapseWorkspace.name} -UAMIIdentityID ${r_deploymentScriptUAMI.properties.principalId} -KeyVaultName ${r_keyVault.name} -KeyVaultID ${r_keyVault.id} -AzureMLWorkspaceName ${r_azureMLWorkspace.name} -AzMLSynapseLinkedServiceIdentityID ${r_azureMLSynapseLinkedService.identity.principalId} -DataLakeStorageAccountName ${r_dataLakeStorageAccount.name} -DataLakeStorageAccountID ${r_dataLakeStorageAccount.id}'
     primaryScriptUri: synapsePostDeploymentPSScript
+  }
+}
+
+
+//Purview Deployment Script
+var purviewPostDeploymentPSScript = 'https://raw.githubusercontent.com/fabragaMS/AzureAnalyticsE2E/master/Deploy/scripts/PurviewPostDeploy.ps1'
+
+resource r_purviewPostDeployScript 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
+  name:'PurviewPostDeploymentScript'
+  dependsOn: [
+    r_synapseWorkspaceOwnerRoleAssignment
+  ]
+  location:resourceLocation
+  kind:'AzurePowerShell'
+  identity:{
+    type:'UserAssigned'
+    userAssignedIdentities: {
+      '${r_deploymentScriptUAMI.id}': {}
+    }
+  }
+  properties:{
+    azPowerShellVersion:'3.0'
+    cleanupPreference:'OnSuccess'
+    retentionInterval: 'P1D'
+    timeout:'PT30M'
+    arguments: '-ScanEndpoint ${r_purviewAccount.properties.endpoints.scan} -KeyVaultName ${r_keyVault.name} -KeyVaultID ${r_keyVault.id}'
+    primaryScriptUri: purviewPostDeploymentPSScript
   }
 }
 
