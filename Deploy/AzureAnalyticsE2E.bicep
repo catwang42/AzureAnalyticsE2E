@@ -712,6 +712,42 @@ module m_purviewEventHubPrivateLink 'modules/PrivateEndpoint.bicep' = if(deploym
   }
 }
 
+//Purview Account and Portal private endpoints
+module m_privateDNSZonePurviewAccount 'modules/PrivateDNSZone.bicep' = if(deploymentMode == 'vNet') {
+  name: 'privatelink.purview.azure.com'
+  params: {
+    dnsZoneName: 'privatelink.purview.azure.com-${r_vNet.name}'
+    vNetID: r_vNet.id
+    vNetName: r_vNet.name
+  }
+}
+
+module m_purviewAccountPrivateLink 'modules/PrivateEndpoint.bicep' = if(deploymentMode == 'vNet') {
+  name: 'PurviewAccountPrivateLink'
+  params: {
+    groupID: 'account'
+    privateDnsZoneConfigName: 'privatelink-purview-azure-com-account'
+    privateDnsZoneId: m_privateDNSZonePurviewAccount.outputs.dnsZoneID
+    privateEndpoitName: '${r_purviewAccount.name}-account'
+    privateLinkServiceId: r_purviewAccount.id
+    resourceLocation: resourceLocation
+    subnetID: r_subNet.id
+  }
+}
+
+module m_purviewPortalPrivateLink 'modules/PrivateEndpoint.bicep' = if(deploymentMode == 'vNet') {
+  name: 'PurviewPortalPrivateLink'
+  params: {
+    groupID: 'portal'
+    privateDnsZoneConfigName: 'privatelink-purview-azure-com-portal'
+    privateDnsZoneId: m_privateDNSZonePurviewAccount.outputs.dnsZoneID
+    privateEndpoitName: '${r_purviewAccount.name}-portal'
+    privateLinkServiceId: r_purviewAccount.id
+    resourceLocation: resourceLocation
+    subnetID: r_subNet.id
+  }
+}
+
 //Azure ML Storage Account
 resource r_azureMLStorage 'Microsoft.Storage/storageAccounts@2021-02-01' = if(ctrlDeployAI == true) {
   name:azureMLStorageAccountName
@@ -844,7 +880,7 @@ resource r_dataLakeRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-
 }
 
 //Assign Reader Role to Purview MSI in the Resource Group as per https://docs.microsoft.com/en-us/azure/purview/register-scan-synapse-workspace
-resource r_purviewRGReaderRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = if (ctrlDeployAzureRBAC == true) {
+resource r_purviewRGReaderRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = if (ctrlDeployAzureRBAC == true && ctrlDeployPurview == true) {
   name: guid(resourceGroup().name, r_purviewAccount.name, 'Reader')
   properties:{
     roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', azureRBACReaderRoleID)
@@ -875,7 +911,7 @@ resource r_azureMLStorageBlobDataReaderRoleAssignment 'Microsoft.Authorization/r
 }
 
 //Assign Storage Blob Data Reader Role to Azure Data Share in the Data Lake Account as per https://docs.microsoft.com/en-us/azure/data-share/concepts-roles-permissions
-resource r_azureDataShareStorageBlobDataReaderRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = if (ctrlDeployAzureRBAC == true) {
+resource r_azureDataShareStorageBlobDataReaderRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = if (ctrlDeployAzureRBAC == true && crtlDeployDataShare == true) {
   name: guid(r_dataLakeStorageAccount.name, r_dataShareAccount.name, 'Storage Blob Data Reader')
   scope:r_dataLakeStorageAccount
   properties:{
@@ -897,7 +933,7 @@ resource r_synapseWorkspaceOwnerRoleAssignment 'Microsoft.Authorization/roleAssi
 }
 
 //Assign Owner Role to UAMI in the Purview Account. UAMI needs to be Owner so it can make calls to Purview APIs from post deployment script.
-resource r_purviewAccountOwnerRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = if (ctrlDeployAzureRBAC == true) {
+resource r_purviewAccountOwnerRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = if (ctrlDeployAzureRBAC == true && ctrlDeployPurview == true) {
   name: guid(r_purviewAccount.name, r_deploymentScriptUAMI.name)
   scope: r_purviewAccount
   properties:{
@@ -942,7 +978,7 @@ resource r_synapsePostDeployScript 'Microsoft.Resources/deploymentScripts@2020-1
 //Purview Deployment Script
 var purviewPostDeploymentPSScript = 'https://raw.githubusercontent.com/fabragaMS/AzureAnalyticsE2E/master/Deploy/scripts/PurviewPostDeploy.ps1'
 
-resource r_purviewPostDeployScript 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
+resource r_purviewPostDeployScript 'Microsoft.Resources/deploymentScripts@2020-10-01' = if(ctrlDeployPurview == true){
   name:'PurviewPostDeploymentScript'
   dependsOn: [
     r_synapseWorkspaceOwnerRoleAssignment
