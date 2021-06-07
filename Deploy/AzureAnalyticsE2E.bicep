@@ -598,7 +598,7 @@ resource r_keyVault 'Microsoft.KeyVault/vaults@2021-04-01-preview' = {
 module m_privateDNSZoneKeyVault 'modules/PrivateDNSZone.bicep' = if(deploymentMode == 'vNet') {
   name: 'privatelink.vaultcore.azure.net'
   params: {
-    dnsZoneName: 'privatelink.vaultcore.azure.net-${r_vNet.name}'
+    dnsZoneName: 'privatelink.vaultcore.azure.net'
     vNetID: r_vNet.id
     vNetName: r_vNet.name
   }
@@ -638,7 +638,8 @@ resource r_purviewAccount 'Microsoft.Purview/accounts@2020-12-01-preview' = if(c
     capacity: 4
   }
   properties:{
-    publicNetworkAccess: (deploymentMode == 'vNet') ? 'Disabled' : 'Enabled'
+    //publicNetworkAccess: (deploymentMode == 'vNet') ? 'Disabled' : 'Enabled'
+    publicNetworkAccess: 'Enabled' //Required for PostDeployment Scripts Purview API calls.
   }
 }
 
@@ -646,7 +647,7 @@ resource r_purviewAccount 'Microsoft.Purview/accounts@2020-12-01-preview' = if(c
 module m_privateDNSZoneBlob 'modules/PrivateDNSZone.bicep' = if(deploymentMode == 'vNet') {
   name: 'privatelink.blob.core.windows.net'
   params: {
-    dnsZoneName: 'privatelink.blob.core.windows.net-${r_vNet.name}'
+    dnsZoneName: 'privatelink.blob.core.windows.net'
     vNetID: r_vNet.id
     vNetName: r_vNet.name
   }
@@ -670,7 +671,7 @@ module m_purviewBlobPrivateLink 'modules/PrivateEndpoint.bicep' = if(deploymentM
 module m_privateDNSZoneQueue 'modules/PrivateDNSZone.bicep' = if(deploymentMode == 'vNet') {
   name: 'privatelink.queue.core.windows.net'
   params: {
-    dnsZoneName: 'privatelink.queue.core.windows.net-${r_vNet.name}'
+    dnsZoneName: 'privatelink.queue.core.windows.net'
     vNetID: r_vNet.id
     vNetName: r_vNet.name
   }
@@ -693,7 +694,7 @@ module m_purviewQueuePrivateLink 'modules/PrivateEndpoint.bicep' = if(deployment
 module m_privateDNSZoneServiceBus 'modules/PrivateDNSZone.bicep' = if(deploymentMode == 'vNet') {
   name: 'privatelink.servicebus.windows.net'
   params: {
-    dnsZoneName: 'privatelink.servicebus.windows.net-${r_vNet.name}'
+    dnsZoneName: 'privatelink.servicebus.windows.net'
     vNetID: r_vNet.id
     vNetName: r_vNet.name
   }
@@ -716,7 +717,7 @@ module m_purviewEventHubPrivateLink 'modules/PrivateEndpoint.bicep' = if(deploym
 module m_privateDNSZonePurviewAccount 'modules/PrivateDNSZone.bicep' = if(deploymentMode == 'vNet') {
   name: 'privatelink.purview.azure.com'
   params: {
-    dnsZoneName: 'privatelink.purview.azure.com-${r_vNet.name}'
+    dnsZoneName: 'privatelink.purview.azure.com'
     vNetID: r_vNet.id
     vNetName: r_vNet.name
   }
@@ -981,7 +982,7 @@ var purviewPostDeploymentPSScript = 'https://raw.githubusercontent.com/fabragaMS
 resource r_purviewPostDeployScript 'Microsoft.Resources/deploymentScripts@2020-10-01' = if(ctrlDeployPurview == true){
   name:'PurviewPostDeploymentScript'
   dependsOn: [
-    r_synapseWorkspaceOwnerRoleAssignment
+    r_purviewAccountOwnerRoleAssignment
   ]
   location:resourceLocation
   kind:'AzurePowerShell'

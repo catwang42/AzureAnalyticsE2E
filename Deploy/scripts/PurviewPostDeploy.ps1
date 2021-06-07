@@ -12,7 +12,7 @@ $secondsDelay = 30
 # ASSIGN WORKSPACE ADMINISTRATOR TO USER-ASSIGNED MANAGED IDENTITY
 #------------------------------------------------------------------------------------------------------------
 
-Connect-AzAccount -Subscription 96bd7145-ad7f-445a-9763-862e32480bf1
+#Connect-AzAccount -Subscription 96bd7145-ad7f-445a-9763-862e32480bf1
 
 $token = (Get-AzAccessToken -Resource "https://purview.azure.net").Token
 $headers = @{ Authorization = "Bearer $token" }
@@ -28,7 +28,6 @@ $body = "{
       ""baseUrl"": ""https://$KeyVaultName.vault.azure.net/""
   }
 }"
-
 
 Write-Host "Creating Azure KeyVault connection..."
 
