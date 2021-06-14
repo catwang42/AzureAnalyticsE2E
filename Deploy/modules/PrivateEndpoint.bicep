@@ -1,27 +1,12 @@
-@description('Private Endpoint Name')
 param privateEndpoitName string 
-
-@description('Resource Location')
 param resourceLocation string 
-
-@description('Private Link Service ID')
 param privateLinkServiceId string
-
-@description('Private Link Group ID')
 param groupID string
-
-@description('Subnet ID')
 param subnetID string 
-
-@description('Private DNS Zone Config Name')
-param privateDnsZoneConfigName string 
-
-@description('Private DNS Zone ID')
-param privateDnsZoneId string
-
-@description('Deploy DNS Zone Group')
+//param privateDnsZoneConfigName string 
+//param privateDnsZoneId string
 param deployDNSZoneGroup bool = true
-
+param privateDNSZoneConfigs array
 
 resource r_privateEndpoint 'Microsoft.Network/privateEndpoints@2020-11-01' = {
   name: privateEndpoitName
@@ -46,14 +31,7 @@ resource r_privateEndpoint 'Microsoft.Network/privateEndpoints@2020-11-01' = {
   resource r_vNetPrivateDNSZoneGroupSynapseSQL 'privateDnsZoneGroups' = if(deployDNSZoneGroup) {
     name: 'default'
     properties:{
-      privateDnsZoneConfigs:[
-        {
-          name:privateDnsZoneConfigName
-          properties:{
-            privateDnsZoneId: privateDnsZoneId
-          }
-        }
-      ]
+      privateDnsZoneConfigs: privateDNSZoneConfigs
     }
   }
 }

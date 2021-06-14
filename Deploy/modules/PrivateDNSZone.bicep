@@ -1,10 +1,5 @@
-@description('DNS Zone Name')
 param dnsZoneName string 
-
-@description('vNet Name')
 param vNetName string 
-
-@description('vNet ID')
 param vNetID string 
 
 resource r_privateDNSZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {

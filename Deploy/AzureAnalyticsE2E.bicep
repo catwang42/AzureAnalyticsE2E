@@ -2,8 +2,6 @@
 // Global Parameters
 //********************************************************
 
-param aadDirectoryReaderPrincipalID string = 'b0d7a8aa-8447-4c83-b238-ec953ae990f6' //Service Principal used to Connect to SQL in Post Deployment script
-
 @allowed([
   'default'
   'vNet'
@@ -21,7 +19,6 @@ param uniqueSuffix string = substring(uniqueString(resourceGroup().id),0,5)
 // Workload Deployment Control Parameters
 //********************************************************
 
-param ctrlDeployAzureRBAC bool = true   //Controls the deployment of Azure RBAC Assignments
 param ctrlDeployPurview bool = true     //Controls the deployment of Azure Purview
 param ctrlDeployAI bool = true          //Controls the deployment of Azure ML and Cognitive Services
 param ctrlDeployStreaming bool = false   //Controls the deployment of EventHubs and Stream Analytics
@@ -118,6 +115,10 @@ param synapsePrivateLinkHubName string = 'azsynapsehub${uniqueSuffix}'
 //Purview Account Parameters
 @description('Purview Account Name')
 param purviewAccountName string = 'azpurview${uniqueSuffix}'
+
+@description('Purview Managed Resource Group Name')
+param purviewManagedRGName string = '${purviewAccountName}-mrg'
+
 //----------------------------------------------------------------------
 
 //Key Vault Parameters
@@ -134,6 +135,11 @@ param azureMLStorageAccountName string = 'azmlstorage${uniqueSuffix}'
 
 @description('Azure Machine Learning Application Insights Name')
 param azureMLAppInsightsName string = 'azmlappinsights${uniqueSuffix}'
+
+@description('Azure Machine Learning Container Registry Name')
+param azureMLContainerRegistryName string = 'azmlcontainerreg${uniqueSuffix}'
+
+
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 //Azure Data Share Parameters
@@ -175,12 +181,8 @@ param streamAnalyticsJobSku string = 'Standard'
 //********************************************************
 // Variables
 //********************************************************
-var dataLakeStorageAccountUrl = 'https://${dataLakeAccountName}.dfs.core.windows.net'
 
-var azureRBACStorageBlobDataContributorRoleID = 'ba92f5b4-2d11-453d-a403-e96b0029c9fe' //Storage Blob Data Contributor Role
 var azureRBACStorageBlobDataReaderRoleID = '2a2b9908-6ea1-4ae2-8e65-a410df84e7d1' //Storage Blob Data Reader Role
-var azureRBACReaderRoleID = 'acdd72a7-3385-48ef-bd42-f606fba81ae7' //Reader Role
-var azureRBACOwnerRoleID = '8e3af657-a8ff-443c-a75c-2fe8c4bcb635'  //Owner Role
 
 var deploymentScriptUAMIName = toLower('${resourceGroup().name}-uami')
 
@@ -218,744 +220,172 @@ resource r_subNet 'Microsoft.Network/virtualNetworks/subnets@2020-11-01' = {
   }
 }
 
-//Data Lake Storage Account
-resource r_dataLakeStorageAccount 'Microsoft.Storage/storageAccounts@2021-02-01' = {
-  name: dataLakeAccountName
-  location: resourceLocation
-  properties:{
-    isHnsEnabled: true
-    accessTier:'Hot'
-    allowBlobPublicAccess: (ctrlAllowStoragePublicContainer && deploymentMode != 'vNet')
+//Deploy Private DNS Zones required to suppport Private Endpoints
+module m_DeployPrivateDNSZones 'modules/PrivateDNSZonesDeploy.bicep' = if (deploymentMode == 'vNet' && ctrlDeployPrivateDNSZones == true){
+  name: 'DeployPrivateDNSZones'
+  params: {
+    vNetID: r_vNet.id
+    vNetName: r_vNet.name
+    ctrlDeployAI: ctrlDeployAI
+    ctrlDeployPurview: ctrlDeployPurview
+    ctrlDeployStreaming: ctrlDeployStreaming
+  }
+}
+
+//Deploy Core Services: Data Lake Account, Synapse Workspace and Key Vault.
+module m_CoreServicesDeploy 'modules/CoreServicesDeploy.bicep' = {
+  name: 'CoreServicesDeploy'
+  params: {
+    deploymentMode: deploymentMode
+    resourceLocation: resourceLocation
+    vNetName: vNetName
     allowSharedKeyAccess: allowSharedKeyAccess
-    networkAcls: {
-      defaultAction: (deploymentMode == 'vNet')? 'Deny' : 'Allow'
-      bypass:'AzureServices'
-    }
-  }
-  kind:'StorageV2'
-  sku: {
-      name: 'Standard_RAGRS'
-  }
-}
-
-//Private Link for Data Lake DFS
-resource r_dataLakeStorageAccountPrivateLink 'Microsoft.Network/privateEndpoints@2020-11-01' = if(deploymentMode == 'vNet') {
-  name: '${r_dataLakeStorageAccount.name}-dfs'
-  location:resourceLocation
-  properties:{
-    subnet:{
-      id: r_subNet.id
-    }
-    privateLinkServiceConnections:[
-      {
-        name:'${r_dataLakeStorageAccount.name}-dfs'
-        properties:{
-          privateLinkServiceId: r_dataLakeStorageAccount.id
-          groupIds:[
-            'dfs'
-          ]
-        }
-      }
-    ]
-  }
-
-  resource r_vNetPrivateDNSZoneGroupStorageDFS 'privateDnsZoneGroups' = {
-    name: 'default'
-    properties:{
-      privateDnsZoneConfigs:[
-        {
-          name:'privatelink-dfs-core-windows-net'
-          properties:{
-            privateDnsZoneId: m_privateDNSZoneStorageDFS.outputs.dnsZoneID
-          }
-        }
-      ]
-    }
+    ctrlAllowStoragePublicContainer: ctrlAllowStoragePublicContainer
+    dataLakeAccountName: dataLakeAccountName
+    dataLakeCuratedZoneName: dataLakeCuratedZoneName
+    dataLakePublicZoneName: dataLakePublicZoneName
+    dataLakeRawZoneName: dataLakeRawZoneName
+    dataLakeSandpitZoneName: dataLakeSandpitZoneName
+    dataLakeTransientZoneName: dataLakeTransientZoneName
+    dataLakeTrustedZoneName: dataLakeTrustedZoneName
+    synapseDefaultContainerName: synapseDefaultContainerName
+    keyVaultName: keyVaultName
+    purviewAccountID: (ctrlDeployPurview == true)? m_PurviewDeploy.outputs.purviewAccountID : json('null')
+    purviewAccountPrincipalID: (ctrlDeployPurview == true)? m_PurviewDeploy.outputs.purviewIdentityPrincipalID : json('null')
+    synapseDedicatedSQLPoolName: synapseDedicatedSQLPoolName
+    synapseManagedRGName: synapseManagedRGName
+    synapsePrivateLinkHubName: synapsePrivateLinkHubName
+    synapseSparkPoolMaxNodeCount: synapseSparkPoolMaxNodeCount
+    synapseSparkPoolMinNodeCount: synapseSparkPoolMinNodeCount
+    synapseSparkPoolName: synapseSparkPoolName
+    synapseSparkPoolNodeSize: synapseSparkPoolNodeSize
+    synapseSqlAdminPassword: synapseSqlAdminPassword
+    synapseSqlAdminUserName: synapseSqlAdminUserName
+    synapseSQLPoolSKU: synapseSQLPoolSKU
+    synapseWorkspaceName: synapseWorkspaceName
+    uamiPrincipalID: r_deploymentScriptUAMI.properties.principalId
+    vNetID:r_vNet.id
+    vNetSubnetID: r_subNet.id
   }
 }
 
-module m_privateDNSZoneStorageDFS './modules/PrivateDNSZone.bicep' = if(deploymentMode == 'vNet') {
-  name: 'PrivateDNSZoneStorageDFS'
+
+//Deploy Purview Account
+module m_PurviewDeploy 'modules/PurviewDeploy.bicep' = if (ctrlDeployPurview == true){
+  name: 'PurviewDeploy'
   params: {
-    dnsZoneName: 'privatelink.dfs.core.windows.net'
+    deploymentMode: deploymentMode
+    purviewAccountName: purviewAccountName
+    purviewManagedRGName: purviewManagedRGName
+    resourceLocation: resourceLocation
+    subnetID: r_subNet.id
     vNetID: r_vNet.id
     vNetName: r_vNet.name
+    uamiPrincipalID: r_deploymentScriptUAMI.properties.principalId
   }
 }
 
-param privateContainerNames array = [
-  dataLakeRawZoneName
-  dataLakeTrustedZoneName
-  dataLakeCuratedZoneName
-  dataLakeSandpitZoneName
-  synapseDefaultContainerName
-]
 
-resource r_dataLakePrivateContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2021-02-01' = [for containerName in privateContainerNames: {
-  name:'${r_dataLakeStorageAccount.name}/default/${containerName}'
-}]
-
-//Public Zone Container
-resource r_dataLakePublicContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2021-02-01' = if(ctrlAllowStoragePublicContainer == true && deploymentMode != 'vNet') {
-  name:'${r_dataLakeStorageAccount.name}/default/${dataLakePublicZoneName}'
-  properties:{
-    publicAccess:'Blob' //TODO: Edit public access for SolutionAccelerator-vNet
-  }
-}
-
-//Synapse Workspace
-resource r_synapseWorkspace 'Microsoft.Synapse/workspaces@2021-03-01' = {
-  name:synapseWorkspaceName
-  location: resourceLocation
-  identity:{
-    type:'SystemAssigned'
-  }
-  properties:{
-    defaultDataLakeStorage:{
-      accountUrl: dataLakeStorageAccountUrl
-      filesystem: synapseDefaultContainerName
-    }
-    sqlAdministratorLogin: synapseSqlAdminUserName
-    sqlAdministratorLoginPassword: synapseSqlAdminPassword
-    managedResourceGroupName: synapseManagedRGName
-    managedVirtualNetwork: (deploymentMode == 'vNet') ? 'default' : ''
-    managedVirtualNetworkSettings:{
-      preventDataExfiltration:true
-    }
-    purviewConfiguration:{
-      purviewResourceId: r_purviewAccount.id
-    }
-  }
-
-  resource r_workspaceAADAdmin 'administrators' = {
-    name:'activeDirectory'
-    properties:{
-      administratorType:'ActiveDirectory'
-      tenantId: subscription().tenantId
-      sid: r_deploymentScriptUAMI.properties.principalId
-    }
-  }
-
-  //Dedicated SQL Pool
-  resource r_sqlPool 'sqlPools' = {
-    name: synapseDedicatedSQLPoolName
-    location: resourceLocation
-    sku:{
-      name:synapseSQLPoolSKU
-    }
-    properties:{
-      createMode:'Default'
-      collation: 'SQL_Latin1_General_CP1_CI_AS'
-    }
-  }
-
-  //Default Firewall Rules - Allow All Traffic
-  resource r_synapseWorkspaceFirewallAllowAll 'firewallRules' = if (deploymentMode == 'default'){
-    name: 'AllowAllNetworks'
-    properties:{
-      startIpAddress: '0.0.0.0'
-      endIpAddress: '255.255.255.255'
-    }
-  }
-
-  //Firewall Allow Azure Sevices
-  //Required for Post-Deployment Scripts
-  resource r_synapseWorkspaceFirewallAllowAzure 'firewallRules' = {
-    name: 'AllowAllWindowsAzureIps'
-    properties:{
-      startIpAddress: '0.0.0.0'
-      endIpAddress: '0.0.0.0'
-    }
-  }
-
-  //Set Synapse MSI as SQL Admin
-  resource r_managedIdentitySqlControlSettings 'managedIdentitySqlControlSettings' = {
-    name: 'default'
-    properties:{
-      grantSqlControlToManagedIdentity:{
-        desiredState: 'Enabled'
-      }
-    }
-  }
-
-  //Spark Pool
-  resource r_sparkPool 'bigDataPools' = {
-    name: synapseSparkPoolName
-    location: resourceLocation
-    properties:{
-      autoPause:{
-        enabled:true
-        delayInMinutes: 15
-      }
-      nodeSize: synapseSparkPoolNodeSize
-      nodeSizeFamily:'MemoryOptimized'
-      sparkVersion: '2.4'
-      autoScale:{
-        enabled:true
-        minNodeCount: synapseSparkPoolMinNodeCount
-        maxNodeCount: synapseSparkPoolMaxNodeCount
-      }
-    }
-  }
-}
-
-//Azure Synapse Private Link Hub
-resource r_synapsePrivateLinkhub 'Microsoft.Synapse/privateLinkHubs@2021-03-01' = if (deploymentMode == 'vNet') {
-  name: synapsePrivateLinkHubName
-  location:resourceLocation
-}
-
-
-//Private DNS Zones required for Synapse Private Link
-//privatelink.sql.azuresynapse.net
-module m_privateDNSZoneSynapseSQL './modules/PrivateDNSZone.bicep' = if(deploymentMode == 'vNet') {
-  name: 'PrivateDNSZoneSynapseSQL'
+//Deploy AI Services: Azure Machine Learning Workspace (and dependent services) and Cognitive Services
+module m_AIServicesDeploy 'modules/AIServicesDeploy.bicep' = if(ctrlDeployAI == true) {
+  name: 'AIServicesDeploy'
   params: {
-    dnsZoneName: 'privatelink.sql.azuresynapse.net'
-    vNetID: r_vNet.id
-    vNetName: r_vNet.name
-  }
-}
-
-//Private DNS Zones required for Synapse Private Link
-//privatelink.dev.azuresynapse.net
-module m_privateDNSZoneSynapseDev './modules/PrivateDNSZone.bicep' = if(deploymentMode == 'vNet') {
-  name: 'PrivateDNSZoneSynapseDev'
-  params: {
-    dnsZoneName: 'privatelink.dev.azuresynapse.net'
-    vNetID: r_vNet.id
-    vNetName: r_vNet.name
-  }
-}
-
-//Private DNS Zones required for Synapse Private Link
-//privatelink.azuresynapse.net
-module m_privateDNSZoneSynapseWeb './modules/PrivateDNSZone.bicep' = if(deploymentMode == 'vNet') {
-  name: 'PrivateDNSZoneSynapseWeb'
-  params: {
-    dnsZoneName: 'privatelink.azuresynapse.net'
-    vNetID: r_vNet.id
-    vNetName: r_vNet.name
-  }
-}
-
-//Private Endpoint for Synapse SQL
-module m_synapseSQLPrivateLink 'modules/PrivateEndpoint.bicep' = if(deploymentMode == 'vNet') {
-  name: 'SynapseSQLPrivateLink'
-  params: {
-    groupID: 'Sql'
-    privateDnsZoneConfigName: 'privatelink-sql-azuresynapse-net'
-    privateDnsZoneId: m_privateDNSZoneSynapseSQL.outputs.dnsZoneID
-    privateEndpoitName: '${r_synapseWorkspace.name}-sql'
-    privateLinkServiceId: r_synapseWorkspace.id
+    anomalyDetectorName: anomalyDetectorName
+    azureMLAppInsightsName: azureMLAppInsightsName
+    azureMLContainerRegistryName: azureMLContainerRegistryName
+    azureMLStorageAccountName: azureMLStorageAccountName
+    azureMLWorkspaceName: azureMLWorkspaceName
+    cognitiveServiceAccountName: cognitiveServiceAccountName
+    keyVaultName: keyVaultName
     resourceLocation: resourceLocation
-    subnetID: r_subNet.id
+    synapseSparkPoolID: m_CoreServicesDeploy.outputs.synapseWorkspaceSparkID
+    synapseWorkspaceID: m_CoreServicesDeploy.outputs.synapseWorkspaceID
+    synapseWorkspaceName: m_CoreServicesDeploy.outputs.synapseWorkspaceName
+    deploymentMode: deploymentMode
+    vNetSubnetID: r_subNet.id
   }
 }
 
-//Private Endpoint for Synapse SQL Serverless
-module m_synapseSQLServerlessPrivateLink 'modules/PrivateEndpoint.bicep' = if(deploymentMode == 'vNet') {
-  name: 'SynapseSQLServerlessPrivateLink'
+module m_DataShareDeploy 'modules/DataShareDeploy.bicep' = if(crtlDeployDataShare == true){
+  name: 'DataShareDeploy'
   params: {
-    groupID: 'SqlOnDemand'
-    privateDnsZoneConfigName: 'privatelink-sql-azuresynapse-net'
-    privateDnsZoneId: m_privateDNSZoneSynapseSQL.outputs.dnsZoneID
-    privateEndpoitName: '${r_synapseWorkspace.name}-sqlserverless'
-    privateLinkServiceId: r_synapseWorkspace.id
+    dataShareAccountName: dataShareAccountName
     resourceLocation: resourceLocation
-    subnetID: r_subNet.id
-    deployDNSZoneGroup:false
   }
 }
 
-//Private Endpoint for Synapse Dev
-module m_synapseDevPrivateLink 'modules/PrivateEndpoint.bicep' = if(deploymentMode == 'vNet') {
-  name: 'SynapseDevPrivateLink'
+module m_StreamingServicesDeploy 'modules/StreamingServicesDeploy.bicep' = if(ctrlDeployStreaming == true) {
+  name: 'StreamingServicesDeploy'
   params: {
-    groupID: 'Dev'
-    privateDnsZoneConfigName: 'privatelink-web-azuresynapse-net'
-    privateDnsZoneId: m_privateDNSZoneSynapseDev.outputs.dnsZoneID
-    privateEndpoitName: '${r_synapseWorkspace.name}-dev'
-    privateLinkServiceId: r_synapseWorkspace.id
+    dataLakeStorageAccountID: m_CoreServicesDeploy.outputs.dataLakeStorageAccountID 
+    eventHubName: eventHubName
+    eventHubNamespaceName: eventHubNamespaceName
+    eventHubPartitionCount: eventHubPartitionCount
+    eventHubSku: eventHubSku
     resourceLocation: resourceLocation
-    subnetID: r_subNet.id
-  }
-}
-
-//Private Endpoint for Synapse Web
-module m_synapseWebPrivateLink 'modules/PrivateEndpoint.bicep' = if(deploymentMode == 'vNet') {
-  name: 'SynapseWebPrivateLink'
-  params: {
-    groupID: 'Web'
-    privateDnsZoneConfigName: 'privatelink-dev-azuresynapse-net'
-    privateDnsZoneId: m_privateDNSZoneSynapseWeb.outputs.dnsZoneID
-    privateEndpoitName: '${r_synapseWorkspace.name}-web'
-    privateLinkServiceId: r_synapsePrivateLinkhub.id
-    resourceLocation: resourceLocation
-    subnetID: r_subNet.id
-  }
-}
-
-//Cognitive Services Account
-resource r_cognitiveServices 'Microsoft.CognitiveServices/accounts@2017-04-18' = if(ctrlDeployAI == true){
-  name: cognitiveServiceAccountName
-  location: resourceLocation
-  kind: 'CognitiveServices'
-  sku:{
-    name: 'S0'
-  }
-}
-
-//Anomaly Detector Account
-resource r_anomalyDetector 'Microsoft.CognitiveServices/accounts@2017-04-18' = if(ctrlDeployAI == true){
-  name: anomalyDetectorName
-  location: resourceLocation
-  kind: 'AnomalyDetector'
-  sku:{
-    name: 'S0'
-  }
-}
-
-//Key Vault
-resource r_keyVault 'Microsoft.KeyVault/vaults@2021-04-01-preview' = {
-  name: keyVaultName
-  location: resourceLocation
-  properties:{
-    tenantId: subscription().tenantId
-    enabledForDeployment:true
-    enableSoftDelete:true
-    sku:{
-      name:'standard'
-      family:'A'
-    }
-    networkAcls: {
-      defaultAction: (deploymentMode == 'vNet')? 'Deny' : 'Allow'
-      bypass:'AzureServices'
-    }
-    accessPolicies:[
-      //Access Policy to allow Synapse to Get and List Secrets
-      //https://docs.microsoft.com/en-us/azure/data-factory/how-to-use-azure-key-vault-secrets-pipeline-activities
-      {
-        objectId: r_synapseWorkspace.identity.principalId
-        tenantId: subscription().tenantId
-        permissions: {
-          secrets: [
-            'get'
-            'list'
-          ]
-        }
-      }
-      //Access Policy to allow Purview to Get and List Secrets
-      //https://docs.microsoft.com/en-us/azure/purview/manage-credentials#grant-the-purview-managed-identity-access-to-your-azure-key-vault
-      {
-        objectId: r_purviewAccount.identity.principalId
-        tenantId: subscription().tenantId
-        permissions: {
-          secrets: [
-            'get'
-            'list'
-          ]
-        }
-      }
-      //Access Policy to allow Deployment Script UAMI to Get, Set and List Secrets
-      //https://docs.microsoft.com/en-us/azure/purview/manage-credentials#grant-the-purview-managed-identity-access-to-your-azure-key-vault
-      {
-        objectId: r_deploymentScriptUAMI.properties.principalId
-        tenantId: subscription().tenantId
-        permissions: {
-          secrets: [
-            'get'
-            'list'
-            'set'
-          ]
-        }
-      }
-    ]
-  }
-
-  resource r_aadDirectoryReaderPrincipalIDSecret 'secrets' = {
-    name:'AADDirectoryReaderPrincipalID'
-    properties:{
-      value:aadDirectoryReaderPrincipalID
-    }
-  }
-
-  resource r_cognitiveServicesAccountKey 'secrets' = if(ctrlDeployAI == true){
-    name:'${r_cognitiveServices.name}-Key'
-    properties:{
-      value: listKeys(r_cognitiveServices.id,r_cognitiveServices.apiVersion).key1
-    }
-  }
-
-  resource r_anomalyDetectorAccountKey 'secrets' = if(ctrlDeployAI == true){
-    name:'${r_anomalyDetector.name}-Key'
-    properties:{
-      value: listKeys(r_anomalyDetector.id,r_anomalyDetector.apiVersion).key1
-    }
-  }
-}
-
-module m_privateDNSZoneKeyVault 'modules/PrivateDNSZone.bicep' = if(deploymentMode == 'vNet') {
-  name: 'privatelink.vaultcore.azure.net'
-  params: {
-    dnsZoneName: 'privatelink.vaultcore.azure.net'
-    vNetID: r_vNet.id
-    vNetName: r_vNet.name
-  }
-}
-
-module m_keyVaultPrivateLink 'modules/PrivateEndpoint.bicep' = if(deploymentMode == 'vNet') {
-  name: 'KeyVaultPrivateLink'
-  params: {
-    groupID: 'vault'
-    privateDnsZoneConfigName: 'privatelink-vaultcore-azure-net'
-    privateDnsZoneId: m_privateDNSZoneKeyVault.outputs.dnsZoneID
-    privateEndpoitName: r_keyVault.name
-    privateLinkServiceId: r_keyVault.id
-    resourceLocation: resourceLocation
-    subnetID: r_subNet.id
-  }
-}
-
-//Data Share Account
-resource r_dataShareAccount 'Microsoft.DataShare/accounts@2020-09-01' = if(crtlDeployDataShare == true) {
-  name:dataShareAccountName
-  location:resourceLocation
-  identity:{
-    type:'SystemAssigned'
-  }
-}
-
-//Purview Account
-resource r_purviewAccount 'Microsoft.Purview/accounts@2020-12-01-preview' = if(ctrlDeployPurview == true){
-  name: purviewAccountName
-  location: resourceLocation
-  identity:{
-    type:'SystemAssigned'
-  }
-  sku:{
-    name:'Standard'
-    capacity: 4
-  }
-  properties:{
-    //publicNetworkAccess: (deploymentMode == 'vNet') ? 'Disabled' : 'Enabled'
-    publicNetworkAccess: 'Enabled' //Required for PostDeployment Scripts Purview API calls.
-  }
-}
-
-//Purview Ingestion endpoint: Blob
-module m_privateDNSZoneBlob 'modules/PrivateDNSZone.bicep' = if(deploymentMode == 'vNet') {
-  name: 'privatelink.blob.core.windows.net'
-  params: {
-    dnsZoneName: 'privatelink.blob.core.windows.net'
-    vNetID: r_vNet.id
-    vNetName: r_vNet.name
-  }
-}
-
-module m_purviewBlobPrivateLink 'modules/PrivateEndpoint.bicep' = if(deploymentMode == 'vNet') {
-  name: 'purviewBlobPrivateLink'
-  params: {
-    groupID: 'blob'
-    privateDnsZoneConfigName: 'privatelink-blob-core-windows-net'
-    privateDnsZoneId: m_privateDNSZoneBlob.outputs.dnsZoneID
-    privateEndpoitName: '${r_purviewAccount.name}-blob'
-    privateLinkServiceId: r_purviewAccount.properties.managedResources.storageAccount
-    resourceLocation: resourceLocation
-    subnetID: r_subNet.id
-  }
-}
-
-
-//Purview Ingestion endpoint: Queue
-module m_privateDNSZoneQueue 'modules/PrivateDNSZone.bicep' = if(deploymentMode == 'vNet') {
-  name: 'privatelink.queue.core.windows.net'
-  params: {
-    dnsZoneName: 'privatelink.queue.core.windows.net'
-    vNetID: r_vNet.id
-    vNetName: r_vNet.name
-  }
-}
-
-module m_purviewQueuePrivateLink 'modules/PrivateEndpoint.bicep' = if(deploymentMode == 'vNet') {
-  name: 'PurviewQueuePrivateLink'
-  params: {
-    groupID: 'queue'
-    privateDnsZoneConfigName: 'privatelink-queue-core-windows-net'
-    privateDnsZoneId: m_privateDNSZoneQueue.outputs.dnsZoneID
-    privateEndpoitName: '${r_purviewAccount.name}-queue'
-    privateLinkServiceId: r_purviewAccount.properties.managedResources.storageAccount
-    resourceLocation: resourceLocation
-    subnetID: r_subNet.id
-  }
-}
-
-//Purview Ingestion endpoint: Event Hub Namespace
-module m_privateDNSZoneServiceBus 'modules/PrivateDNSZone.bicep' = if(deploymentMode == 'vNet') {
-  name: 'privatelink.servicebus.windows.net'
-  params: {
-    dnsZoneName: 'privatelink.servicebus.windows.net'
-    vNetID: r_vNet.id
-    vNetName: r_vNet.name
-  }
-}
-
-module m_purviewEventHubPrivateLink 'modules/PrivateEndpoint.bicep' = if(deploymentMode == 'vNet') {
-  name: 'PurviewEventHubPrivateLink'
-  params: {
-    groupID: 'namespace'
-    privateDnsZoneConfigName: 'privatelink-servicebus-windows-net'
-    privateDnsZoneId: m_privateDNSZoneServiceBus.outputs.dnsZoneID
-    privateEndpoitName: '${r_purviewAccount.name}-namespace'
-    privateLinkServiceId: r_purviewAccount.properties.managedResources.eventHubNamespace
-    resourceLocation: resourceLocation
-    subnetID: r_subNet.id
-  }
-}
-
-//Purview Account and Portal private endpoints
-module m_privateDNSZonePurviewAccount 'modules/PrivateDNSZone.bicep' = if(deploymentMode == 'vNet') {
-  name: 'privatelink.purview.azure.com'
-  params: {
-    dnsZoneName: 'privatelink.purview.azure.com'
-    vNetID: r_vNet.id
-    vNetName: r_vNet.name
-  }
-}
-
-module m_purviewAccountPrivateLink 'modules/PrivateEndpoint.bicep' = if(deploymentMode == 'vNet') {
-  name: 'PurviewAccountPrivateLink'
-  params: {
-    groupID: 'account'
-    privateDnsZoneConfigName: 'privatelink-purview-azure-com-account'
-    privateDnsZoneId: m_privateDNSZonePurviewAccount.outputs.dnsZoneID
-    privateEndpoitName: '${r_purviewAccount.name}-account'
-    privateLinkServiceId: r_purviewAccount.id
-    resourceLocation: resourceLocation
-    subnetID: r_subNet.id
-  }
-}
-
-module m_purviewPortalPrivateLink 'modules/PrivateEndpoint.bicep' = if(deploymentMode == 'vNet') {
-  name: 'PurviewPortalPrivateLink'
-  params: {
-    groupID: 'portal'
-    privateDnsZoneConfigName: 'privatelink-purview-azure-com-portal'
-    privateDnsZoneId: m_privateDNSZonePurviewAccount.outputs.dnsZoneID
-    privateEndpoitName: '${r_purviewAccount.name}-portal'
-    privateLinkServiceId: r_purviewAccount.id
-    resourceLocation: resourceLocation
-    subnetID: r_subNet.id
-  }
-}
-
-//Azure ML Storage Account
-resource r_azureMLStorage 'Microsoft.Storage/storageAccounts@2021-02-01' = if(ctrlDeployAI == true) {
-  name:azureMLStorageAccountName
-  location:resourceLocation
-  kind:'StorageV2'
-  sku:{
-    name:'Standard_LRS'
-    tier:'Standard'
-  }
-  properties:{
-    encryption:{
-      services:{
-        blob:{
-          enabled:true
-        }
-        file:{
-          enabled:true
-        }
-      }
-      keySource:'Microsoft.Storage'
-    }
-  }
-}
-
-resource r_azureMLAppInsights 'Microsoft.Insights/components@2020-02-02-preview' = if(ctrlDeployAI == true) {
-  name: azureMLAppInsightsName
-  location:resourceLocation
-  kind:'web'
-  properties:{
-    Application_Type:'web'
-  }
-}
-
-resource r_azureMLWorkspace 'Microsoft.MachineLearningServices/workspaces@2021-04-01' = if(ctrlDeployAI == true) {
-  name: azureMLWorkspaceName
-  location: resourceLocation
-  sku:{
-    name: 'Basic'
-    tier: 'Basic'
-  }
-  identity:{
-    type:'SystemAssigned'
-  }
-  properties:{
-    friendlyName: azureMLWorkspaceName
-    keyVault: r_keyVault.id
-    storageAccount: r_azureMLStorage.id
-    applicationInsights: r_azureMLAppInsights.id
-  }
-
-  resource r_azureMLSynapseSparkCompute 'computes' = {
-    name: 'SynapseSparkPool'
-    location: resourceLocation
-    properties:{
-      computeType:'SynapseSpark'
-      resourceId: r_synapseWorkspace::r_sparkPool.id
-    }
-  }
-}
-
-resource r_azureMLSynapseLinkedService 'Microsoft.MachineLearningServices/workspaces/linkedServices@2020-09-01-preview' = if(ctrlDeployAI == true) {
-  name: r_synapseWorkspace.name
-  location: resourceLocation
-  parent: r_azureMLWorkspace
-  identity:{
-    type:'SystemAssigned'
-  }
-  properties:{
-    linkedServiceResourceId: r_synapseWorkspace.id
-  }
-}
-
-resource r_eventHubNamespace 'Microsoft.EventHub/namespaces@2017-04-01' = if(ctrlDeployStreaming == true) {
-  name: eventHubNamespaceName
-  location: resourceLocation
-  sku:{
-    name:eventHubSku
-    tier:eventHubSku
-    capacity:1
-  }
-
-  resource r_eventHub 'eventhubs' = {
-    name:eventHubName
-    properties:{
-      messageRetentionInDays:7
-      partitionCount:eventHubPartitionCount
-      captureDescription:{
-        enabled:true
-        skipEmptyArchives: true
-        encoding: 'Avro'
-        intervalInSeconds: 300
-        sizeLimitInBytes: 314572800
-        destination: {
-          name: 'EventHubArchive.AzureBlockBlob'
-          properties: {
-            storageAccountResourceId: r_dataLakeStorageAccount.id
-            blobContainer: 'raw'
-            archiveNameFormat: '{Namespace}/{EventHub}/{PartitionId}/{Year}/{Month}/{Day}/{Hour}/{Minute}/{Second}'
-          }
-        }
-      }
-    }
-  }
-}
-
-resource r_streamAnalyticsJob 'Microsoft.StreamAnalytics/streamingjobs@2017-04-01-preview' = if(ctrlDeployStreaming == true) {
-  name: streamAnalyticsJobName
-  location: resourceLocation
-  properties:{
-    sku:{
-      name:streamAnalyticsJobSku
-    }
+    streamAnalyticsJobName: streamAnalyticsJobName
+    streamAnalyticsJobSku: streamAnalyticsJobSku
   }
 }
 
 //********************************************************
-// Role Assignments
+// RBAC Role Assignments
 //********************************************************
-
-//Synapse Workspace Role Assignment as Blob Data Contributor Role in the Data Lake Storage Account
-//https://docs.microsoft.com/en-us/azure/synapse-analytics/security/how-to-grant-workspace-managed-identity-permissions
-resource r_dataLakeRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = if (ctrlDeployAzureRBAC == true) {
-  name: guid(r_synapseWorkspace.name, r_dataLakeStorageAccount.name)
-  scope: r_dataLakeStorageAccount
-  properties:{
-    roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', azureRBACStorageBlobDataContributorRoleID)
-    principalId: r_synapseWorkspace.identity.principalId
-    principalType:'ServicePrincipal'
-  }
-}
-
-//Assign Reader Role to Purview MSI in the Resource Group as per https://docs.microsoft.com/en-us/azure/purview/register-scan-synapse-workspace
-resource r_purviewRGReaderRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = if (ctrlDeployAzureRBAC == true && ctrlDeployPurview == true) {
-  name: guid(resourceGroup().name, r_purviewAccount.name, 'Reader')
-  properties:{
-    roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', azureRBACReaderRoleID)
-    principalId: r_purviewAccount.identity.principalId
-    principalType:'ServicePrincipal'
-  }
+resource r_dataLakeStorageAccount 'Microsoft.Storage/storageAccounts@2021-04-01' existing = {
+  name: dataLakeAccountName
 }
 
 //Assign Storage Blob Reader Role to Purview MSI in the Resource Group as per https://docs.microsoft.com/en-us/azure/purview/register-scan-synapse-workspace
-resource r_purviewRGStorageBlobDataReaderRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = if (ctrlDeployAzureRBAC == true) {
-  name: guid(resourceGroup().name, r_purviewAccount.name, 'Storage Blob Reader')
+resource r_purviewRGStorageBlobDataReaderRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = if (ctrlDeployPurview == true) {
+  name: guid(resourceGroup().name, purviewAccountName, 'Storage Blob Reader')
   properties:{
     roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', azureRBACStorageBlobDataReaderRoleID)
-    principalId: r_purviewAccount.identity.principalId
+    principalId: m_PurviewDeploy.outputs.purviewIdentityPrincipalID
     principalType:'ServicePrincipal'
   }
 }
 
 //Assign Storage Blob Data Reader Role to Azure ML MSI in the Data Lake Account as per https://docs.microsoft.com/en-us/azure/machine-learning/how-to-identity-based-data-access
-resource r_azureMLStorageBlobDataReaderRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = if (ctrlDeployAzureRBAC == true && ctrlDeployAI == true) {
-  name: guid(r_dataLakeStorageAccount.name, r_azureMLWorkspace.name, 'Storage Blob Data Reader')
+resource r_azureMLStorageBlobDataReaderRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = if(ctrlDeployAI == true) {
+  name: guid(r_dataLakeStorageAccount.name, azureMLWorkspaceName, 'Storage Blob Data Reader')
   scope:r_dataLakeStorageAccount
+  dependsOn: [
+    m_CoreServicesDeploy
+    m_AIServicesDeploy
+  ]
   properties:{
     roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', azureRBACStorageBlobDataReaderRoleID)
-    principalId: r_azureMLWorkspace.identity.principalId
+    principalId: m_AIServicesDeploy.outputs.azureMLSynapseLinkedServicePrincipalID
     principalType:'ServicePrincipal'
   }
 }
 
 //Assign Storage Blob Data Reader Role to Azure Data Share in the Data Lake Account as per https://docs.microsoft.com/en-us/azure/data-share/concepts-roles-permissions
-resource r_azureDataShareStorageBlobDataReaderRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = if (ctrlDeployAzureRBAC == true && crtlDeployDataShare == true) {
-  name: guid(r_dataLakeStorageAccount.name, r_dataShareAccount.name, 'Storage Blob Data Reader')
+resource r_azureDataShareStorageBlobDataReaderRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = if (crtlDeployDataShare == true) {
+  name: guid(r_dataLakeStorageAccount.name, dataShareAccountName, 'Storage Blob Data Reader')
   scope:r_dataLakeStorageAccount
+  dependsOn: [
+    m_CoreServicesDeploy
+    m_DataShareDeploy
+  ]
   properties:{
     roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', azureRBACStorageBlobDataReaderRoleID)
-    principalId: r_dataShareAccount.identity.principalId
+    principalId: m_DataShareDeploy.outputs.dataShareAccountPrincipalID
     principalType:'ServicePrincipal'
   }
 }
-
-//Assign Owner Role to UAMI in the Synapse Workspace. UAMI needs to be Owner so it can assign itself as Synapse Admin and create resources in the Data Plane.
-resource r_synapseWorkspaceOwnerRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = if (ctrlDeployAzureRBAC == true) {
-  name: guid(r_synapseWorkspace.name, r_deploymentScriptUAMI.name)
-  scope: r_synapseWorkspace
-  properties:{
-    roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', azureRBACOwnerRoleID)
-    principalId: r_deploymentScriptUAMI.properties.principalId
-    principalType:'ServicePrincipal'
-  }
-}
-
-//Assign Owner Role to UAMI in the Purview Account. UAMI needs to be Owner so it can make calls to Purview APIs from post deployment script.
-resource r_purviewAccountOwnerRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = if (ctrlDeployAzureRBAC == true && ctrlDeployPurview == true) {
-  name: guid(r_purviewAccount.name, r_deploymentScriptUAMI.name)
-  scope: r_purviewAccount
-  properties:{
-    roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', azureRBACOwnerRoleID)
-    principalId: r_deploymentScriptUAMI.properties.principalId
-    principalType:'ServicePrincipal'
-  }
-}
-
 
 //********************************************************
 // Post Deployment Scripts
 //********************************************************
 
 //Synapse Deployment Script
-var synapsePostDeploymentPSScript = 'https://raw.githubusercontent.com/fabragaMS/AzureAnalyticsE2E/master/Deploy/scripts/SynapsePostDeploy.ps1'
+var synapsePostDeploymentPSScript = 'aHR0cHM6Ly9jc2FkZW1vc3RvcmFnZS5ibG9iLmNvcmUud2luZG93cy5uZXQvcG9zdC1kZXBsb3ktc2NyaXB0cy9TeW5hcHNlUG9zdERlcGxveS5wczE='
 
 resource r_synapsePostDeployScript 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
   name:'SynapsePostDeploymentScript'
   dependsOn: [
-    r_synapseWorkspaceOwnerRoleAssignment
+    m_CoreServicesDeploy
   ]
   location:resourceLocation
   kind:'AzurePowerShell'
@@ -970,19 +400,18 @@ resource r_synapsePostDeployScript 'Microsoft.Resources/deploymentScripts@2020-1
     cleanupPreference:'OnSuccess'
     retentionInterval: 'P1D'
     timeout:'PT30M'
-    arguments: '-DeploymentMode ${deploymentMode} -WorkspaceName ${r_synapseWorkspace.name} -UAMIIdentityID ${r_deploymentScriptUAMI.properties.principalId} -KeyVaultName ${r_keyVault.name} -KeyVaultID ${r_keyVault.id} -AzureMLWorkspaceName ${r_azureMLWorkspace.name} -AzMLSynapseLinkedServiceIdentityID ${r_azureMLSynapseLinkedService.identity.principalId} -DataLakeStorageAccountName ${r_dataLakeStorageAccount.name} -DataLakeStorageAccountID ${r_dataLakeStorageAccount.id}'
-    primaryScriptUri: synapsePostDeploymentPSScript
+    arguments: '-DeploymentMode ${deploymentMode} -WorkspaceName ${synapseWorkspaceName} -UAMIIdentityID ${r_deploymentScriptUAMI.properties.principalId} -KeyVaultName ${keyVaultName} -KeyVaultID ${m_CoreServicesDeploy.outputs.keyVaultID} -AzureMLWorkspaceName ${azureMLWorkspaceName} -AzMLSynapseLinkedServiceIdentityID ${m_AIServicesDeploy.outputs.azureMLSynapseLinkedServicePrincipalID} -DataLakeStorageAccountName ${dataLakeAccountName} -DataLakeStorageAccountID ${m_CoreServicesDeploy.outputs.dataLakeStorageAccountID}'
+    primaryScriptUri: base64ToString(synapsePostDeploymentPSScript)
   }
 }
 
-
 //Purview Deployment Script
-var purviewPostDeploymentPSScript = 'https://raw.githubusercontent.com/fabragaMS/AzureAnalyticsE2E/master/Deploy/scripts/PurviewPostDeploy.ps1'
+var purviewPostDeploymentPSScript = 'aHR0cHM6Ly9jc2FkZW1vc3RvcmFnZS5ibG9iLmNvcmUud2luZG93cy5uZXQvcG9zdC1kZXBsb3ktc2NyaXB0cy9QdXJ2aWV3UG9zdERlcGxveS5wczE='
 
 resource r_purviewPostDeployScript 'Microsoft.Resources/deploymentScripts@2020-10-01' = if(ctrlDeployPurview == true){
   name:'PurviewPostDeploymentScript'
   dependsOn: [
-    r_purviewAccountOwnerRoleAssignment
+    m_PurviewDeploy
   ]
   location:resourceLocation
   kind:'AzurePowerShell'
@@ -997,15 +426,12 @@ resource r_purviewPostDeployScript 'Microsoft.Resources/deploymentScripts@2020-1
     cleanupPreference:'OnSuccess'
     retentionInterval: 'P1D'
     timeout:'PT30M'
-    arguments: '-ScanEndpoint ${r_purviewAccount.properties.endpoints.scan} -KeyVaultName ${r_keyVault.name} -KeyVaultID ${r_keyVault.id}'
-    primaryScriptUri: purviewPostDeploymentPSScript
+    arguments: '-ScanEndpoint ${m_PurviewDeploy.outputs.purviewScanEndpoint} -APIVersion ${m_PurviewDeploy.outputs.purviewAPIVersion} -SynapseWorkspaceName ${m_CoreServicesDeploy.outputs.synapseWorkspaceName} -KeyVaultName ${keyVaultName} -KeyVaultID ${m_CoreServicesDeploy.outputs.keyVaultID} -DataLakeAccountName ${m_CoreServicesDeploy.outputs.dataLakeStorageAccountName}'
+    primaryScriptUri: base64ToString(purviewPostDeploymentPSScript)
   }
 }
 
 //********************************************************
-// Output
+// Outputs
 //********************************************************
 
-output dataLakeStorageAccountID string = r_dataLakeStorageAccount.id
-output synapseWorkspaceID string = r_synapseWorkspace.id
-output vNetSubNetID string = r_subNet.id
