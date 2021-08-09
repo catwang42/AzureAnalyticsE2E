@@ -153,15 +153,15 @@ module m_privateDNSZoneAzureMLNotebooks 'PrivateDNSZone.bicep' = if(ctrlDeployAI
 }
 
 output storageDFSPrivateDNSZoneID string = m_privateDNSZoneStorageDFS.outputs.dnsZoneID
-output storageBlobPrivateDNSZoneID string = m_privateDNSZoneStorageBlob.outputs.dnsZoneID
-output storageQueuePrivateDNSZoneID string = m_privateDNSZoneStorageQueue.outputs.dnsZoneID
-output storageFilePrivateDNSZoneID string = m_privateDNSZoneStorageFile.outputs.dnsZoneID
+output storageBlobPrivateDNSZoneID string = ctrlDeployPurview == true || ctrlDeployAI == true ? m_privateDNSZoneStorageBlob.outputs.dnsZoneID: ''
+output storageQueuePrivateDNSZoneID string = ctrlDeployPurview ? m_privateDNSZoneStorageQueue.outputs.dnsZoneID : ''
+output storageFilePrivateDNSZoneID string = ctrlDeployAI ? m_privateDNSZoneStorageFile.outputs.dnsZoneID : ''
 output synapseSQLPrivateDNSZoneID string = m_privateDNSZoneSynapseSQL.outputs.dnsZoneID
 output synapseDevPrivateDNSZoneID string = m_privateDNSZoneSynapseDev.outputs.dnsZoneID
 output synapseWebPrivateDNSZoneID string = m_privateDNSZoneSynapseWeb.outputs.dnsZoneID
 output keyVaultPrivateDNSZoneID string = m_privateDNSZoneKeyVault.outputs.dnsZoneID
-output serviceBusPrivateDNSZoneID string = m_privateDNSZoneServiceBus.outputs.dnsZoneID
-output purviewAccountPrivateDNSZoneID string = m_privateDNSZonePurviewAccount.outputs.dnsZoneID
-output acrPrivateDNSZoneID string = m_privateDNSZoneACR.outputs.dnsZoneID
-output azureMLAPIPrivateDNSZoneID string = m_privateDNSZoneAzureMLAPI.outputs.dnsZoneID
-output azureMLNotebooksPrivateDNSZoneID string = m_privateDNSZoneAzureMLNotebooks.outputs.dnsZoneID
+output serviceBusPrivateDNSZoneID string = ctrlDeployPurview == true || ctrlDeployStreaming == true ? m_privateDNSZoneServiceBus.outputs.dnsZoneID : ''
+output purviewAccountPrivateDNSZoneID string = ctrlDeployPurview ? m_privateDNSZonePurviewAccount.outputs.dnsZoneID : ''
+output acrPrivateDNSZoneID string = ctrlDeployAI ? m_privateDNSZoneACR.outputs.dnsZoneID : ''
+output azureMLAPIPrivateDNSZoneID string = ctrlDeployAI ? m_privateDNSZoneAzureMLAPI.outputs.dnsZoneID : ''
+output azureMLNotebooksPrivateDNSZoneID string = ctrlDeployAI ? m_privateDNSZoneAzureMLNotebooks.outputs.dnsZoneID : ''

@@ -1,10 +1,11 @@
 param deploymentMode string
 param resourceLocation string
+
+param ctrlDeployPrivateDNSZones bool
+
 param purviewAccountName string 
 param purviewManagedRGName string 
-//param ctrlDeployPrivateDNSZones bool = true
-param vNetID string
-param vNetName string
+
 param subnetID string
 param uamiPrincipalID string
 
@@ -59,6 +60,7 @@ module m_purviewBlobPrivateLink 'PrivateEndpoint.bicep' = if(deploymentMode == '
     privateLinkServiceId: r_purviewAccount.properties.managedResources.storageAccount
     resourceLocation: resourceLocation
     subnetID: subnetID
+    deployDNSZoneGroup: ctrlDeployPrivateDNSZones
     privateDNSZoneConfigs: [
       {
         name:'privatelink-blob-core-windows-net'
@@ -78,6 +80,7 @@ module m_purviewQueuePrivateLink 'PrivateEndpoint.bicep' = if(deploymentMode == 
     privateLinkServiceId: r_purviewAccount.properties.managedResources.storageAccount
     resourceLocation: resourceLocation
     subnetID: subnetID
+    deployDNSZoneGroup: ctrlDeployPrivateDNSZones
     privateDNSZoneConfigs:[
       {
         name:'privatelink-queue-core-windows-net'
@@ -97,6 +100,7 @@ module m_purviewEventHubPrivateLink 'PrivateEndpoint.bicep' = if(deploymentMode 
     privateLinkServiceId: r_purviewAccount.properties.managedResources.eventHubNamespace
     resourceLocation: resourceLocation
     subnetID: subnetID
+    deployDNSZoneGroup: ctrlDeployPrivateDNSZones
     privateDNSZoneConfigs: [
       {
         name:'privatelink-servicebus-windows-net'
@@ -116,6 +120,7 @@ module m_purviewAccountPrivateLink 'PrivateEndpoint.bicep' = if(deploymentMode =
     privateLinkServiceId: r_purviewAccount.id
     resourceLocation: resourceLocation
     subnetID: subnetID
+    deployDNSZoneGroup: ctrlDeployPrivateDNSZones
     privateDNSZoneConfigs: [
       {
         name:'privatelink-purview-azure-com-account'
@@ -135,6 +140,7 @@ module m_purviewPortalPrivateLink 'PrivateEndpoint.bicep' = if(deploymentMode ==
     privateLinkServiceId: r_purviewAccount.id
     resourceLocation: resourceLocation
     subnetID: subnetID
+    deployDNSZoneGroup: ctrlDeployPrivateDNSZones
     privateDNSZoneConfigs: [
       {
         name:'privatelink-purview-azure-com-portal'
@@ -145,6 +151,10 @@ module m_purviewPortalPrivateLink 'PrivateEndpoint.bicep' = if(deploymentMode ==
     ]
   }
 }
+
+
+
+
 
 //Assign Reader Role to Purview MSI in the Resource Group as per https://docs.microsoft.com/en-us/azure/purview/register-scan-synapse-workspace
 resource r_purviewRGReaderRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {

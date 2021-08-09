@@ -1,5 +1,8 @@
 param deploymentMode string
 param resourceLocation string
+
+param ctrlDeployPrivateDNSZones bool 
+
 param azureMLWorkspaceName string
 param azureMLStorageAccountName string
 param azureMLAppInsightsName string
@@ -110,6 +113,7 @@ module m_dataLakeStorageAccountBlobPrivateLink './PrivateEndpoint.bicep' = if(de
     privateLinkServiceId: r_azureMLStorageAccount.id
     resourceLocation: resourceLocation
     subnetID: vNetSubnetID
+    deployDNSZoneGroup: ctrlDeployPrivateDNSZones
     privateDNSZoneConfigs:[
       {
         name:'privatelink-blob-core-windows-net'
@@ -130,6 +134,7 @@ module m_dataLakeStorageAccountFilePrivateLink './PrivateEndpoint.bicep' = if(de
     privateLinkServiceId: r_azureMLStorageAccount.id
     resourceLocation: resourceLocation
     subnetID: vNetSubnetID
+    deployDNSZoneGroup: ctrlDeployPrivateDNSZones
     privateDNSZoneConfigs: [
       {
         name:'privatelink-file-core-windows-net'
@@ -172,6 +177,7 @@ module m_azureMLContainerRegistryPrivateLInk './PrivateEndpoint.bicep' = if(depl
     privateLinkServiceId: r_azureMLContainerRegistry.id
     resourceLocation: resourceLocation
     subnetID: vNetSubnetID
+    deployDNSZoneGroup: ctrlDeployPrivateDNSZones
     privateDNSZoneConfigs: [
       {
         name:'privatelink-azurecr-io'
@@ -246,6 +252,7 @@ module m_azureMLWorkspacePrivateLink 'PrivateEndpoint.bicep' = if(deploymentMode
     privateLinkServiceId: r_azureMLWorkspace.id
     resourceLocation: resourceLocation
     subnetID: vNetSubnetID
+    deployDNSZoneGroup: ctrlDeployPrivateDNSZones
   }
 }
 

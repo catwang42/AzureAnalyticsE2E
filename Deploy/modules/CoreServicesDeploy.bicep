@@ -1,10 +1,9 @@
-param deploymentMode string 
+param deploymentMode string
 param resourceLocation string
 
 param ctrlAllowStoragePublicContainer bool
+param ctrlDeployPrivateDNSZones bool
 
-param vNetID string
-param vNetName string
 param vNetSubnetID string
 
 param dataLakeAccountName string
@@ -29,17 +28,13 @@ param synapseSparkPoolMinNodeCount int
 param synapseSparkPoolMaxNodeCount int
 param synapsePrivateLinkHubName string
 
-param keyVaultName string
 param purviewAccountID string
-param purviewAccountPrincipalID string
 param uamiPrincipalID string
 
 var storageEnvironmentDNS = environment().suffixes.storage
 var dataLakeStorageAccountUrl = 'https://${dataLakeAccountName}.dfs.${storageEnvironmentDNS}'
 var azureRBACStorageBlobDataContributorRoleID = 'ba92f5b4-2d11-453d-a403-e96b0029c9fe' //Storage Blob Data Contributor Role
 var azureRBACOwnerRoleID = '8e3af657-a8ff-443c-a75c-2fe8c4bcb635'  //Owner Role
-
-
 
 //Data Lake Storage Account
 resource r_dataLakeStorageAccount 'Microsoft.Storage/storageAccounts@2021-02-01' = {
@@ -76,6 +71,7 @@ module m_dataLakeStorageAccountPrivateLink './PrivateEndpoint.bicep' = if(deploy
     privateLinkServiceId: r_dataLakeStorageAccount.id
     resourceLocation: resourceLocation
     subnetID: vNetSubnetID
+    deployDNSZoneGroup: ctrlDeployPrivateDNSZones
     privateDNSZoneConfigs: [
       {
         name:'privatelink-dfs-core-windows-net'
@@ -129,9 +125,9 @@ resource r_synapseWorkspace 'Microsoft.Synapse/workspaces@2021-03-01' = {
     sqlAdministratorLoginPassword: synapseSqlAdminPassword
     managedResourceGroupName: synapseManagedRGName
     managedVirtualNetwork: (deploymentMode == 'vNet') ? 'default' : ''
-    managedVirtualNetworkSettings:{
+    managedVirtualNetworkSettings: (deploymentMode == 'vNet')? {
       preventDataExfiltration:true
-    }
+    }: null
     purviewConfiguration:{
       purviewResourceId: purviewAccountID
     }
@@ -233,11 +229,6 @@ resource r_privateDNSZoneSynapseWeb 'Microsoft.Network/privateDnsZones@2020-06-0
   name: 'privatelink.azuresynapse.net'
 }
 
-//Private DNS Zones required for Synapse Private Link: privatelink.vaultcore.azure.net
-//Required for KeyVault
-resource r_privateDNSZoneKeyVault 'Microsoft.Network/privateDnsZones@2020-06-01' existing = {
-  name: 'privatelink.vaultcore.azure.net'
-}
 
 //Private Endpoint for Synapse SQL
 module m_synapseSQLPrivateLink './PrivateEndpoint.bicep' = if(deploymentMode == 'vNet') {
@@ -248,6 +239,7 @@ module m_synapseSQLPrivateLink './PrivateEndpoint.bicep' = if(deploymentMode == 
     privateLinkServiceId: r_synapseWorkspace.id
     resourceLocation: resourceLocation
     subnetID: vNetSubnetID
+    deployDNSZoneGroup: ctrlDeployPrivateDNSZones
     privateDNSZoneConfigs: [
       {
         name:'privatelink-sql-azuresynapse-net'
@@ -268,6 +260,7 @@ module m_synapseSQLServerlessPrivateLink './PrivateEndpoint.bicep' = if(deployme
     privateLinkServiceId: r_synapseWorkspace.id
     resourceLocation: resourceLocation
     subnetID: vNetSubnetID
+    deployDNSZoneGroup: ctrlDeployPrivateDNSZones
     privateDNSZoneConfigs: [
       {
         name: 'privatelink-sql-azuresynapse-net'
@@ -288,6 +281,7 @@ module m_synapseDevPrivateLink './PrivateEndpoint.bicep' = if(deploymentMode == 
     privateLinkServiceId: r_synapseWorkspace.id
     resourceLocation: resourceLocation
     subnetID: vNetSubnetID
+    deployDNSZoneGroup: ctrlDeployPrivateDNSZones
     privateDNSZoneConfigs: [
       {
         name:'privatelink-web-azuresynapse-net'
@@ -308,6 +302,7 @@ module m_synapseWebPrivateLink './PrivateEndpoint.bicep' = if(deploymentMode == 
     privateLinkServiceId: r_synapsePrivateLinkhub.id
     resourceLocation: resourceLocation
     subnetID: vNetSubnetID
+    deployDNSZoneGroup: ctrlDeployPrivateDNSZones
     privateDNSZoneConfigs: [
       {
         name:'privatelink-dev-azuresynapse-net'
@@ -319,82 +314,7 @@ module m_synapseWebPrivateLink './PrivateEndpoint.bicep' = if(deploymentMode == 
   }
 }
 
-//Key Vault
-resource r_keyVault 'Microsoft.KeyVault/vaults@2021-04-01-preview' = {
-  name: keyVaultName
-  location: resourceLocation
-  properties:{
-    tenantId: subscription().tenantId
-    enabledForDeployment:true
-    enableSoftDelete:true
-    sku:{
-      name:'standard'
-      family:'A'
-    }
-    networkAcls: {
-      defaultAction: (deploymentMode == 'vNet')? 'Deny' : 'Allow'
-      bypass:'AzureServices'
-    }
-    accessPolicies:[
-      //Access Policy to allow Synapse to Get and List Secrets
-      //https://docs.microsoft.com/en-us/azure/data-factory/how-to-use-azure-key-vault-secrets-pipeline-activities
-      {
-        objectId: r_synapseWorkspace.identity.principalId
-        tenantId: subscription().tenantId
-        permissions: {
-          secrets: [
-            'get'
-            'list'
-          ]
-        }
-      }
-      //Access Policy to allow Purview to Get and List Secrets
-      //https://docs.microsoft.com/en-us/azure/purview/manage-credentials#grant-the-purview-managed-identity-access-to-your-azure-key-vault
-      {
-        objectId: purviewAccountPrincipalID
-        tenantId: subscription().tenantId
-        permissions: {
-          secrets: [
-            'get'
-            'list'
-          ]
-        }
-      }
-      //Access Policy to allow Deployment Script UAMI to Get, Set and List Secrets
-      //https://docs.microsoft.com/en-us/azure/purview/manage-credentials#grant-the-purview-managed-identity-access-to-your-azure-key-vault
-      {
-        objectId: uamiPrincipalID
-        tenantId: subscription().tenantId
-        permissions: {
-          secrets: [
-            'get'
-            'list'
-            'set'
-          ]
-        }
-      }
-    ]
-  }
-}
 
-module m_keyVaultPrivateLink './PrivateEndpoint.bicep' = if(deploymentMode == 'vNet') {
-  name: 'KeyVaultPrivateLink'
-  params: {
-    groupID: 'vault'
-    privateEndpoitName: r_keyVault.name
-    privateLinkServiceId: r_keyVault.id
-    resourceLocation: resourceLocation
-    subnetID: vNetSubnetID
-    privateDNSZoneConfigs: [
-      {
-        name:'privatelink-vaultcore-azure-net'
-        properties:{
-          privateDnsZoneId: r_privateDNSZoneKeyVault.id
-        }
-      }
-    ]
-  }
-}
 
 //Synapse Workspace Role Assignment as Blob Data Contributor Role in the Data Lake Storage Account
 //https://docs.microsoft.com/en-us/azure/synapse-analytics/security/how-to-grant-workspace-managed-identity-permissions
@@ -426,5 +346,4 @@ output synapseWorkspaceName string = r_synapseWorkspace.name
 output synapseSQLDedicatedEndpoint string = r_synapseWorkspace.properties.connectivityEndpoints.sql
 output synapseSQLServerlessEndpoint string = r_synapseWorkspace.properties.connectivityEndpoints.sqlOnDemand
 output synapseWorkspaceSparkID string = r_synapseWorkspace::r_sparkPool.id
-output keyVaultID string = r_keyVault.id
-output keyVaultName string = r_keyVault.name
+output synapseWorkspaceIdentityPrincipalID string = r_synapseWorkspace.identity.principalId

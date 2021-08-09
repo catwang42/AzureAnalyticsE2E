@@ -6,8 +6,9 @@ param(
   [string] $DataLakeStorageAccountName,
   [string] $DataLakeStorageAccountID,
   [string] $UAMIIdentityID,
-  [string] $AzMLSynapseLinkedServiceIdentityID,
-  [string] $AzureMLWorkspaceName
+  [AllowEmptyString()]
+  [Parameter(Mandatory=$false)]
+  [string] $AzMLSynapseLinkedServiceIdentityID
 )
 
 $retries = 10
@@ -38,20 +39,22 @@ $result = Invoke-RestMethod -Method Post -ContentType "application/json" -Uri $u
 # ASSIGN SYNAPSE APACHE SPARK ADMINISTRATOR TO AZURE ML LINKED SERVICE MSI
 #------------------------------------------------------------------------------------------------------------
 
-#Assign Synapse Apache Spark Administrator Role to Azure ML Linked Service Managed Identity
-# https://docs.microsoft.com/en-us/azure/machine-learning/how-to-link-synapse-ml-workspaces#link-workspaces-with-the-python-sdk
+if (-not ([string]::IsNullOrEmpty($AzMLSynapseLinkedServiceIdentityID))) {
+  #Assign Synapse Apache Spark Administrator Role to Azure ML Linked Service Managed Identity
+  # https://docs.microsoft.com/en-us/azure/machine-learning/how-to-link-synapse-ml-workspaces#link-workspaces-with-the-python-sdk
 
-$body = "{
-  roleId: ""c3a6d2f1-a26f-4810-9b0f-591308d5cbf1"",
-  principalId: ""$AzMLSynapseLinkedServiceIdentityID""
-}"
+  $body = "{
+    roleId: ""c3a6d2f1-a26f-4810-9b0f-591308d5cbf1"",
+    principalId: ""$AzMLSynapseLinkedServiceIdentityID""
+  }"
 
-Write-Host "Assign Synapse Apache Spark Administrator Role to Azure ML Linked Service Managed Identity..."
-Invoke-RestMethod -Method Post -ContentType "application/json" -Uri $uri -Headers $headers -Body $body
+  Write-Host "Assign Synapse Apache Spark Administrator Role to Azure ML Linked Service Managed Identity..."
+  Invoke-RestMethod -Method Post -ContentType "application/json" -Uri $uri -Headers $headers -Body $body
 
-# From: https://docs.microsoft.com/en-us/azure/synapse-analytics/security/how-to-manage-synapse-rbac-role-assignments
-# Changes made to Synapse RBAC role assignments may take 2-5 minutes to take effect.
-# Retry logic required before calling further APIs
+  # From: https://docs.microsoft.com/en-us/azure/synapse-analytics/security/how-to-manage-synapse-rbac-role-assignments
+  # Changes made to Synapse RBAC role assignments may take 2-5 minutes to take effect.
+  # Retry logic required before calling further APIs
+}
 
 #------------------------------------------------------------------------------------------------------------
 # CREATE AZURE KEY VAULT LINKED SERVICE

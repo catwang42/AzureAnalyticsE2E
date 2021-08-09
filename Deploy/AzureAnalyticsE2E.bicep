@@ -19,10 +19,10 @@ param uniqueSuffix string = substring(uniqueString(resourceGroup().id),0,5)
 // Workload Deployment Control Parameters
 //********************************************************
 
-param ctrlDeployPurview bool = true     //Controls the deployment of Azure Purview
-param ctrlDeployAI bool = true          //Controls the deployment of Azure ML and Cognitive Services
+param ctrlDeployPurview bool = false     //Controls the deployment of Azure Purview
+param ctrlDeployAI bool = false          //Controls the deployment of Azure ML and Cognitive Services
 param ctrlDeployStreaming bool = false   //Controls the deployment of EventHubs and Stream Analytics
-param crtlDeployDataShare bool = true   //Controls the deployment of Azure Data Share
+param ctrlDeployDataShare bool = false   //Controls the deployment of Azure Data Share
 param ctrlPostDeployScript bool = true  //Controls the execution of post-deployment script
 param ctrlAllowStoragePublicContainer bool = false //Controls the creation of data lake Public container
 param ctrlDeployPrivateDNSZones bool = true //Controls the creation of private DNS zones for private links
@@ -187,7 +187,7 @@ var azureRBACStorageBlobDataReaderRoleID = '2a2b9908-6ea1-4ae2-8e65-a410df84e7d1
 var deploymentScriptUAMIName = toLower('${resourceGroup().name}-uami')
 
 //********************************************************
-// Resources
+// Shared Resources
 //********************************************************
 
 //User-Assignment Managed Identity used to execute deployment scripts
@@ -210,7 +210,7 @@ resource r_vNet 'Microsoft.Network/virtualNetworks@2020-11-01' = if(deploymentMo
   }
 }
 
-resource r_subNet 'Microsoft.Network/virtualNetworks/subnets@2020-11-01' = {
+resource r_subNet 'Microsoft.Network/virtualNetworks/subnets@2020-11-01' = if(deploymentMode == 'vNet') {
   name: vNetSubnetName
   parent: r_vNet
   properties: {
@@ -219,6 +219,103 @@ resource r_subNet 'Microsoft.Network/virtualNetworks/subnets@2020-11-01' = {
     privateLinkServiceNetworkPolicies:'Enabled'
   }
 }
+
+//Key Vault
+resource r_keyVault 'Microsoft.KeyVault/vaults@2021-04-01-preview' = {
+  name: keyVaultName
+  location: resourceLocation
+  properties:{
+    tenantId: subscription().tenantId
+    enabledForDeployment:true
+    enableSoftDelete:true
+    sku:{
+      name:'standard'
+      family:'A'
+    }
+    networkAcls: {
+      defaultAction: (deploymentMode == 'vNet')? 'Deny' : 'Allow'
+      bypass:'AzureServices'
+    }
+    accessPolicies:[
+      //Access Policy to allow Synapse to Get and List Secrets
+      //https://docs.microsoft.com/en-us/azure/data-factory/how-to-use-azure-key-vault-secrets-pipeline-activities
+      {
+        objectId: m_CoreServicesDeploy.outputs.synapseWorkspaceIdentityPrincipalID
+        tenantId: subscription().tenantId
+        permissions: {
+          secrets: [
+            'get'
+            'list'
+          ]
+        }
+      }
+      //Access Policy to allow Deployment Script UAMI to Get, Set and List Secrets
+      //https://docs.microsoft.com/en-us/azure/purview/manage-credentials#grant-the-purview-managed-identity-access-to-your-azure-key-vault
+      {
+        objectId: r_deploymentScriptUAMI.properties.principalId
+        tenantId: subscription().tenantId
+        permissions: {
+          secrets: [
+            'get'
+            'list'
+            'set'
+          ]
+        }
+      }
+      
+    ]
+  }
+
+  resource r_PurviewAccessPolicy 'accessPolicies' = if (ctrlDeployPurview == true) {
+    name: 'add'
+    properties:{
+      accessPolicies: [
+        //Access Policy to allow Purview to Get and List Secrets
+        //https://docs.microsoft.com/en-us/azure/purview/manage-credentials#grant-the-purview-managed-identity-access-to-your-azure-key-vault
+        {
+          objectId: ctrlDeployPurview ? m_PurviewDeploy.outputs.purviewIdentityPrincipalID : ''
+          tenantId: subscription().tenantId
+          permissions: {
+            secrets: [
+              'get'
+              'list'
+            ]
+          }
+        }
+      ]
+    }
+  }
+}
+
+//Private DNS Zones required for Synapse Private Link: privatelink.vaultcore.azure.net
+//Required for KeyVault
+resource r_privateDNSZoneKeyVault 'Microsoft.Network/privateDnsZones@2020-06-01' existing = {
+  name: 'privatelink.vaultcore.azure.net'
+}
+
+module m_keyVaultPrivateLink './modules/PrivateEndpoint.bicep' = if(deploymentMode == 'vNet') {
+  name: 'KeyVaultPrivateLink'
+  params: {
+    groupID: 'vault'
+    privateEndpoitName: r_keyVault.name
+    privateLinkServiceId: r_keyVault.id
+    resourceLocation: resourceLocation
+    subnetID: r_subNet.id
+    deployDNSZoneGroup:ctrlDeployPrivateDNSZones
+    privateDNSZoneConfigs: [
+      {
+        name:'privatelink-vaultcore-azure-net'
+        properties:{
+          privateDnsZoneId: r_privateDNSZoneKeyVault.id
+        }
+      }
+    ]
+  }
+}
+
+//********************************************************
+// Modules
+//********************************************************
 
 //Deploy Private DNS Zones required to suppport Private Endpoints
 module m_DeployPrivateDNSZones 'modules/PrivateDNSZonesDeploy.bicep' = if (deploymentMode == 'vNet' && ctrlDeployPrivateDNSZones == true){
@@ -238,9 +335,9 @@ module m_CoreServicesDeploy 'modules/CoreServicesDeploy.bicep' = {
   params: {
     deploymentMode: deploymentMode
     resourceLocation: resourceLocation
-    vNetName: vNetName
     allowSharedKeyAccess: allowSharedKeyAccess
     ctrlAllowStoragePublicContainer: ctrlAllowStoragePublicContainer
+    ctrlDeployPrivateDNSZones: ctrlDeployPrivateDNSZones
     dataLakeAccountName: dataLakeAccountName
     dataLakeCuratedZoneName: dataLakeCuratedZoneName
     dataLakePublicZoneName: dataLakePublicZoneName
@@ -249,9 +346,7 @@ module m_CoreServicesDeploy 'modules/CoreServicesDeploy.bicep' = {
     dataLakeTransientZoneName: dataLakeTransientZoneName
     dataLakeTrustedZoneName: dataLakeTrustedZoneName
     synapseDefaultContainerName: synapseDefaultContainerName
-    keyVaultName: keyVaultName
-    purviewAccountID: (ctrlDeployPurview == true)? m_PurviewDeploy.outputs.purviewAccountID : json('null')
-    purviewAccountPrincipalID: (ctrlDeployPurview == true)? m_PurviewDeploy.outputs.purviewIdentityPrincipalID : json('null')
+    purviewAccountID: (ctrlDeployPurview == true)? m_PurviewDeploy.outputs.purviewAccountID : ''
     synapseDedicatedSQLPoolName: synapseDedicatedSQLPoolName
     synapseManagedRGName: synapseManagedRGName
     synapsePrivateLinkHubName: synapsePrivateLinkHubName
@@ -264,7 +359,6 @@ module m_CoreServicesDeploy 'modules/CoreServicesDeploy.bicep' = {
     synapseSQLPoolSKU: synapseSQLPoolSKU
     synapseWorkspaceName: synapseWorkspaceName
     uamiPrincipalID: r_deploymentScriptUAMI.properties.principalId
-    vNetID:r_vNet.id
     vNetSubnetID: r_subNet.id
   }
 }
@@ -275,12 +369,11 @@ module m_PurviewDeploy 'modules/PurviewDeploy.bicep' = if (ctrlDeployPurview == 
   name: 'PurviewDeploy'
   params: {
     deploymentMode: deploymentMode
+    ctrlDeployPrivateDNSZones: ctrlDeployPrivateDNSZones
     purviewAccountName: purviewAccountName
     purviewManagedRGName: purviewManagedRGName
     resourceLocation: resourceLocation
     subnetID: r_subNet.id
-    vNetID: r_vNet.id
-    vNetName: r_vNet.name
     uamiPrincipalID: r_deploymentScriptUAMI.properties.principalId
   }
 }
@@ -303,10 +396,11 @@ module m_AIServicesDeploy 'modules/AIServicesDeploy.bicep' = if(ctrlDeployAI == 
     synapseWorkspaceName: m_CoreServicesDeploy.outputs.synapseWorkspaceName
     deploymentMode: deploymentMode
     vNetSubnetID: r_subNet.id
+    ctrlDeployPrivateDNSZones: ctrlDeployPrivateDNSZones
   }
 }
 
-module m_DataShareDeploy 'modules/DataShareDeploy.bicep' = if(crtlDeployDataShare == true){
+module m_DataShareDeploy 'modules/DataShareDeploy.bicep' = if(ctrlDeployDataShare == true){
   name: 'DataShareDeploy'
   params: {
     dataShareAccountName: dataShareAccountName
@@ -325,6 +419,9 @@ module m_StreamingServicesDeploy 'modules/StreamingServicesDeploy.bicep' = if(ct
     resourceLocation: resourceLocation
     streamAnalyticsJobName: streamAnalyticsJobName
     streamAnalyticsJobSku: streamAnalyticsJobSku
+    ctrlDeployPrivateDNSZones: ctrlDeployPrivateDNSZones
+    deploymentMode: deploymentMode
+    vNetSubnetID: r_subNet.id
   }
 }
 
@@ -340,7 +437,7 @@ resource r_purviewRGStorageBlobDataReaderRoleAssignment 'Microsoft.Authorization
   name: guid(resourceGroup().name, purviewAccountName, 'Storage Blob Reader')
   properties:{
     roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', azureRBACStorageBlobDataReaderRoleID)
-    principalId: m_PurviewDeploy.outputs.purviewIdentityPrincipalID
+    principalId: ctrlDeployPurview ? m_PurviewDeploy.outputs.purviewIdentityPrincipalID : ''
     principalType:'ServicePrincipal'
   }
 }
@@ -355,13 +452,13 @@ resource r_azureMLStorageBlobDataReaderRoleAssignment 'Microsoft.Authorization/r
   ]
   properties:{
     roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', azureRBACStorageBlobDataReaderRoleID)
-    principalId: m_AIServicesDeploy.outputs.azureMLSynapseLinkedServicePrincipalID
+    principalId: ctrlDeployAI ? m_AIServicesDeploy.outputs.azureMLSynapseLinkedServicePrincipalID : ''
     principalType:'ServicePrincipal'
   }
 }
 
 //Assign Storage Blob Data Reader Role to Azure Data Share in the Data Lake Account as per https://docs.microsoft.com/en-us/azure/data-share/concepts-roles-permissions
-resource r_azureDataShareStorageBlobDataReaderRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = if (crtlDeployDataShare == true) {
+resource r_azureDataShareStorageBlobDataReaderRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = if (ctrlDeployDataShare == true) {
   name: guid(r_dataLakeStorageAccount.name, dataShareAccountName, 'Storage Blob Data Reader')
   scope:r_dataLakeStorageAccount
   dependsOn: [
@@ -370,7 +467,7 @@ resource r_azureDataShareStorageBlobDataReaderRoleAssignment 'Microsoft.Authoriz
   ]
   properties:{
     roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', azureRBACStorageBlobDataReaderRoleID)
-    principalId: m_DataShareDeploy.outputs.dataShareAccountPrincipalID
+    principalId: ctrlDeployDataShare ? m_DataShareDeploy.outputs.dataShareAccountPrincipalID : ''
     principalType:'ServicePrincipal'
   }
 }
@@ -381,6 +478,7 @@ resource r_azureDataShareStorageBlobDataReaderRoleAssignment 'Microsoft.Authoriz
 
 //Synapse Deployment Script
 var synapsePostDeploymentPSScript = 'aHR0cHM6Ly9jc2FkZW1vc3RvcmFnZS5ibG9iLmNvcmUud2luZG93cy5uZXQvcG9zdC1kZXBsb3ktc2NyaXB0cy9TeW5hcHNlUG9zdERlcGxveS5wczE='
+var azMLSynapseLinkedServiceIdentityID = ctrlDeployAI ? '-AzMLSynapseLinkedServiceIdentityID ${m_AIServicesDeploy.outputs.azureMLSynapseLinkedServicePrincipalID}' : ''
 
 resource r_synapsePostDeployScript 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
   name:'SynapsePostDeploymentScript'
@@ -400,7 +498,7 @@ resource r_synapsePostDeployScript 'Microsoft.Resources/deploymentScripts@2020-1
     cleanupPreference:'OnSuccess'
     retentionInterval: 'P1D'
     timeout:'PT30M'
-    arguments: '-DeploymentMode ${deploymentMode} -WorkspaceName ${synapseWorkspaceName} -UAMIIdentityID ${r_deploymentScriptUAMI.properties.principalId} -KeyVaultName ${keyVaultName} -KeyVaultID ${m_CoreServicesDeploy.outputs.keyVaultID} -AzureMLWorkspaceName ${azureMLWorkspaceName} -AzMLSynapseLinkedServiceIdentityID ${m_AIServicesDeploy.outputs.azureMLSynapseLinkedServicePrincipalID} -DataLakeStorageAccountName ${dataLakeAccountName} -DataLakeStorageAccountID ${m_CoreServicesDeploy.outputs.dataLakeStorageAccountID}'
+    arguments: '-DeploymentMode ${deploymentMode} -WorkspaceName ${synapseWorkspaceName} -UAMIIdentityID ${r_deploymentScriptUAMI.properties.principalId} -KeyVaultName ${keyVaultName} -KeyVaultID ${r_keyVault.id} ${azMLSynapseLinkedServiceIdentityID} -DataLakeStorageAccountName ${dataLakeAccountName} -DataLakeStorageAccountID ${m_CoreServicesDeploy.outputs.dataLakeStorageAccountID}'
     primaryScriptUri: base64ToString(synapsePostDeploymentPSScript)
   }
 }
@@ -426,7 +524,7 @@ resource r_purviewPostDeployScript 'Microsoft.Resources/deploymentScripts@2020-1
     cleanupPreference:'OnSuccess'
     retentionInterval: 'P1D'
     timeout:'PT30M'
-    arguments: '-ScanEndpoint ${m_PurviewDeploy.outputs.purviewScanEndpoint} -APIVersion ${m_PurviewDeploy.outputs.purviewAPIVersion} -SynapseWorkspaceName ${m_CoreServicesDeploy.outputs.synapseWorkspaceName} -KeyVaultName ${keyVaultName} -KeyVaultID ${m_CoreServicesDeploy.outputs.keyVaultID} -DataLakeAccountName ${m_CoreServicesDeploy.outputs.dataLakeStorageAccountName}'
+    arguments: '-ScanEndpoint ${ctrlDeployPurview ? m_PurviewDeploy.outputs.purviewScanEndpoint : ''} -APIVersion ${ctrlDeployPurview ? m_PurviewDeploy.outputs.purviewAPIVersion : ''} -SynapseWorkspaceName ${m_CoreServicesDeploy.outputs.synapseWorkspaceName} -KeyVaultName ${keyVaultName} -KeyVaultID ${r_keyVault.id} -DataLakeAccountName ${m_CoreServicesDeploy.outputs.dataLakeStorageAccountName}'
     primaryScriptUri: base64ToString(purviewPostDeploymentPSScript)
   }
 }
