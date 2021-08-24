@@ -90,7 +90,7 @@ module m_privateDNSZoneSynapseWeb './PrivateDNSZone.bicep' = {
 //Private DNS Zones required for Synapse Private Link: privatelink.vaultcore.azure.net
 //Required for KeyVault
 module m_privateDNSZoneKeyVault './PrivateDNSZone.bicep' = {
-  name: 'privatelink.vaultcore.azure.net'
+  name: 'PrivateDNSZoneKeyVault'
   params: {
     dnsZoneName: 'privatelink.vaultcore.azure.net'
     vNetID: vNetID
@@ -111,7 +111,7 @@ module m_privateDNSZoneServiceBus './PrivateDNSZone.bicep' = if(ctrlDeployPurvie
 
 //Purview Account and Portal private endpoints
 module m_privateDNSZonePurviewAccount 'PrivateDNSZone.bicep' = if(ctrlDeployPurview == true) {
-  name: 'privatelink.purview.azure.com'
+  name: 'PrivateDNSZonePurview'
   params: {
     dnsZoneName: 'privatelink.purview.azure.com'
     vNetID: vNetID
@@ -122,7 +122,7 @@ module m_privateDNSZonePurviewAccount 'PrivateDNSZone.bicep' = if(ctrlDeployPurv
 //Azure Container Registry DNS Zone privatelink.azurecr.io
 //Required by Azure ML
 module m_privateDNSZoneACR 'PrivateDNSZone.bicep' = if(ctrlDeployAI == true) {
-  name: 'privatelink.azurecr.io'
+  name: 'PrivateDNSZoneContainerRegistry'
   params: {
     dnsZoneName: 'privatelink.azurecr.io'
     vNetID: vNetID
@@ -133,7 +133,7 @@ module m_privateDNSZoneACR 'PrivateDNSZone.bicep' = if(ctrlDeployAI == true) {
 //Azure Machine Learning Workspace DNS Zone: privatelink.azurecr.io
 //Required by Azure ML
 module m_privateDNSZoneAzureMLAPI 'PrivateDNSZone.bicep' = if(ctrlDeployAI == true) {
-  name: 'privatelink.api.azureml.ms'
+  name: 'PrivateDNSZoneAzureMLAPI'
   params: {
     dnsZoneName: 'privatelink.api.azureml.ms'
     vNetID: vNetID
@@ -144,7 +144,7 @@ module m_privateDNSZoneAzureMLAPI 'PrivateDNSZone.bicep' = if(ctrlDeployAI == tr
 //Azure Machine Learning Workspace DNS Zone: privatelink.notebooks.azure.net
 //Required by Azure ML
 module m_privateDNSZoneAzureMLNotebooks 'PrivateDNSZone.bicep' = if(ctrlDeployAI == true) {
-  name: 'privatelink.notebooks.azure.net'
+  name: 'PrivateDNSZoneAzureMLNotebook'
   params: {
     dnsZoneName: 'privatelink.notebooks.azure.net'
     vNetID: vNetID

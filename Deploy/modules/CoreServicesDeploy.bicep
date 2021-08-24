@@ -3,6 +3,7 @@ param resourceLocation string
 
 param ctrlAllowStoragePublicContainer bool
 param ctrlDeployPrivateDNSZones bool
+param ctrlDeploySynapseSQLPool bool
 
 param vNetSubnetID string
 
@@ -143,7 +144,7 @@ resource r_synapseWorkspace 'Microsoft.Synapse/workspaces@2021-03-01' = {
   }
 
   //Dedicated SQL Pool
-  resource r_sqlPool 'sqlPools' = {
+  resource r_sqlPool 'sqlPools' = if (ctrlDeploySynapseSQLPool == true){
     name: synapseDedicatedSQLPoolName
     location: resourceLocation
     sku:{

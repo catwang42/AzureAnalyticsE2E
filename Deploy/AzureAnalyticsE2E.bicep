@@ -26,7 +26,8 @@ param ctrlDeployDataShare bool = false   //Controls the deployment of Azure Data
 param ctrlPostDeployScript bool = true  //Controls the execution of post-deployment script
 param ctrlAllowStoragePublicContainer bool = false //Controls the creation of data lake Public container
 param ctrlDeployPrivateDNSZones bool = true //Controls the creation of private DNS zones for private links
-
+param ctrlDeploySynapseSQLPool bool = false //Controls the creation of Synapse SQL Pool
+param deploymentDatetime string = utcNow()
 //********************************************************
 // Resource Config Parameters
 //********************************************************
@@ -183,7 +184,8 @@ param streamAnalyticsJobSku string = 'Standard'
 //********************************************************
 
 var azureRBACStorageBlobDataReaderRoleID = '2a2b9908-6ea1-4ae2-8e65-a410df84e7d1' //Storage Blob Data Reader Role
-
+var azureRBACContributorRoleID = 'b24988ac-6180-42a0-ab88-20f7382dd24c' //Contributor
+var azureRBACOwnerRoleID = '8e3af657-a8ff-443c-a75c-2fe8c4bcb635' //Owner
 var deploymentScriptUAMIName = toLower('${resourceGroup().name}-uami')
 
 //********************************************************
@@ -338,6 +340,7 @@ module m_CoreServicesDeploy 'modules/CoreServicesDeploy.bicep' = {
     allowSharedKeyAccess: allowSharedKeyAccess
     ctrlAllowStoragePublicContainer: ctrlAllowStoragePublicContainer
     ctrlDeployPrivateDNSZones: ctrlDeployPrivateDNSZones
+    ctrlDeploySynapseSQLPool: ctrlDeploySynapseSQLPool
     dataLakeAccountName: dataLakeAccountName
     dataLakeCuratedZoneName: dataLakeCuratedZoneName
     dataLakePublicZoneName: dataLakePublicZoneName
@@ -442,6 +445,15 @@ resource r_purviewRGStorageBlobDataReaderRoleAssignment 'Microsoft.Authorization
   }
 }
 
+resource r_deploymentScriptUAMIRGOwnerRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = if (deploymentMode == 'vNet') {
+  name: guid(resourceGroup().name, deploymentScriptUAMIName, 'Owner')
+  properties:{
+    roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', azureRBACOwnerRoleID)
+    principalId: r_deploymentScriptUAMI.properties.principalId
+    principalType:'ServicePrincipal'
+  }
+}
+
 //Assign Storage Blob Data Reader Role to Azure ML MSI in the Data Lake Account as per https://docs.microsoft.com/en-us/azure/machine-learning/how-to-identity-based-data-access
 resource r_azureMLStorageBlobDataReaderRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = if(ctrlDeployAI == true) {
   name: guid(r_dataLakeStorageAccount.name, azureMLWorkspaceName, 'Storage Blob Data Reader')
@@ -479,11 +491,12 @@ resource r_azureDataShareStorageBlobDataReaderRoleAssignment 'Microsoft.Authoriz
 //Synapse Deployment Script
 var synapsePostDeploymentPSScript = 'aHR0cHM6Ly9jc2FkZW1vc3RvcmFnZS5ibG9iLmNvcmUud2luZG93cy5uZXQvcG9zdC1kZXBsb3ktc2NyaXB0cy9TeW5hcHNlUG9zdERlcGxveS5wczE='
 var azMLSynapseLinkedServiceIdentityID = ctrlDeployAI ? '-AzMLSynapseLinkedServiceIdentityID ${m_AIServicesDeploy.outputs.azureMLSynapseLinkedServicePrincipalID}' : ''
-
 resource r_synapsePostDeployScript 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
-  name:'SynapsePostDeploymentScript'
+  name:'SynapsePostDeploymentScript-${deploymentDatetime}'
   dependsOn: [
     m_CoreServicesDeploy
+    r_deploymentScriptUAMIRGOwnerRoleAssignment
+    r_keyVault
   ]
   location:resourceLocation
   kind:'AzurePowerShell'
@@ -494,11 +507,11 @@ resource r_synapsePostDeployScript 'Microsoft.Resources/deploymentScripts@2020-1
     }
   }
   properties:{
-    azPowerShellVersion:'3.0'
+    azPowerShellVersion:'6.2'
     cleanupPreference:'OnSuccess'
     retentionInterval: 'P1D'
     timeout:'PT30M'
-    arguments: '-DeploymentMode ${deploymentMode} -WorkspaceName ${synapseWorkspaceName} -UAMIIdentityID ${r_deploymentScriptUAMI.properties.principalId} -KeyVaultName ${keyVaultName} -KeyVaultID ${r_keyVault.id} ${azMLSynapseLinkedServiceIdentityID} -DataLakeStorageAccountName ${dataLakeAccountName} -DataLakeStorageAccountID ${m_CoreServicesDeploy.outputs.dataLakeStorageAccountID}'
+    arguments: '-DeploymentMode ${deploymentMode} -SubscriptionID ${subscription().subscriptionId} -WorkspaceName ${synapseWorkspaceName} -UAMIIdentityID ${r_deploymentScriptUAMI.properties.principalId} -KeyVaultName ${keyVaultName} -KeyVaultID ${r_keyVault.id} ${azMLSynapseLinkedServiceIdentityID} -DataLakeStorageAccountName ${dataLakeAccountName} -DataLakeStorageAccountID ${m_CoreServicesDeploy.outputs.dataLakeStorageAccountID}'
     primaryScriptUri: base64ToString(synapsePostDeploymentPSScript)
   }
 }
@@ -520,7 +533,7 @@ resource r_purviewPostDeployScript 'Microsoft.Resources/deploymentScripts@2020-1
     }
   }
   properties:{
-    azPowerShellVersion:'3.0'
+    azPowerShellVersion:'6.2'
     cleanupPreference:'OnSuccess'
     retentionInterval: 'P1D'
     timeout:'PT30M'

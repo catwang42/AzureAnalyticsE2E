@@ -1,5 +1,6 @@
 param(
   [string] $DeploymentMode,
+  [string] $SubscriptionID,
   [string] $WorkspaceName,
   [string] $KeyVaultName,
   [string] $KeyVaultID,
@@ -17,8 +18,6 @@ $secondsDelay = 30
 #------------------------------------------------------------------------------------------------------------
 # ASSIGN WORKSPACE ADMINISTRATOR TO USER-ASSIGNED MANAGED IDENTITY
 #------------------------------------------------------------------------------------------------------------
-
-#Connect-AzAccount -Subscription 96bd7145-ad7f-445a-9763-862e32480bf1
 
 $token = (Get-AzAccessToken -Resource "https://dev.azuresynapse.net").Token
 $headers = @{ Authorization = "Bearer $token" }
@@ -107,50 +106,94 @@ while (-not $completed) {
 [string[]] $managedPrivateEndpointGroups = 'vault', 'dfs'
 
 if ($DeploymentMode -eq "vNet") {
-    for($i = 0; $i -le ($managedPrivateEndpointNames.Length - 1); $i += 1)
-    {
-        $managedPrivateEndpointName = $managedPrivateEndpointNames[$i]
-        $managedPrivateEndpointID = $managedPrivateEndpointIDs[$i]
-        $managedPrivateEndpointGroup = $managedPrivateEndpointGroups[$i] 
+  for($i = 0; $i -le ($managedPrivateEndpointNames.Length - 1); $i += 1)
+  {
+    $managedPrivateEndpointName = $managedPrivateEndpointNames[$i]
+    $managedPrivateEndpointID = $managedPrivateEndpointIDs[$i]
+    $managedPrivateEndpointGroup = $managedPrivateEndpointGroups[$i] 
 
-        $uri = "https://$WorkspaceName.dev.azuresynapse.net"
-        $uri += "/managedVirtualNetworks/default/managedPrivateEndpoints/$managedPrivateEndpointName"
-        $uri += "?api-version=2019-06-01-preview"
+    $uri = "https://$WorkspaceName.dev.azuresynapse.net"
+    $uri += "/managedVirtualNetworks/default/managedPrivateEndpoints/$managedPrivateEndpointName"
+    $uri += "?api-version=2019-06-01-preview"
 
-        $body = "{
-            name: ""$managedPrivateEndpointName"",
-            type: ""Microsoft.Synapse/workspaces/managedVirtualNetworks/managedPrivateEndpoints"",
-            properties: {
-                privateLinkResourceId: ""$managedPrivateEndpointID"",
-                groupId: ""$managedPrivateEndpointGroup"",
-                provisioningState: ""Succeeded"",
-                privateLinkServiceConnectionState: {
-                status: ""Approved"",
-                description: ""Auto-Approved""
-                }
-            }
-        }"
-
-        Write-Host "Create Managed Private Endpoint for $managedPrivateEndpointName..."
-        $retrycount = 1
-        $completed = $false
-        
-        while (-not $completed) {
-            try {
-                Invoke-RestMethod -Method Put -ContentType "application/json" -Uri $uri -Headers $headers -Body $body -ErrorAction Stop
-                Write-Host "Managed private endpoint for $managedPrivateEndpointName created successfully."
-                $completed = $true
-            }
-            catch {
-                if ($retrycount -ge $retries) {
-                    Write-Host "Managed private endpoint for $managedPrivateEndpointName creation failed the maximum number of $retryCount times."
-                    throw
-                } else {
-                    Write-Host "Managed private endpoint creation for $managedPrivateEndpointName failed $retryCount time(s). Retrying in $secondsDelay seconds."
-                    Start-Sleep $secondsDelay
-                    $retrycount++
-                }
+    $body = "{
+        name: ""$managedPrivateEndpointName"",
+        type: ""Microsoft.Synapse/workspaces/managedVirtualNetworks/managedPrivateEndpoints"",
+        properties: {
+            privateLinkResourceId: ""$managedPrivateEndpointID"",
+            groupId: ""$managedPrivateEndpointGroup"",
+            provisioningState: ""Succeeded"",
+            privateLinkServiceConnectionState: {
+            status: ""Approved"",
+            description: ""Auto-Approved""
             }
         }
+    }"
+
+    Write-Host "Create Managed Private Endpoint for $managedPrivateEndpointName..."
+    $retrycount = 1
+    $completed = $false
+    
+    while (-not $completed) {
+      try {
+        Invoke-RestMethod -Method Put -ContentType "application/json" -Uri $uri -Headers $headers -Body $body -ErrorAction Stop
+        Write-Host "Managed private endpoint for $managedPrivateEndpointName created successfully."
+        $completed = $true
+      }
+      catch {
+        if ($retrycount -ge $retries) {
+          Write-Host "Managed private endpoint for $managedPrivateEndpointName creation failed the maximum number of $retryCount times."
+          throw
+        } else {
+          Write-Host "Managed private endpoint creation for $managedPrivateEndpointName failed $retryCount time(s). Retrying in $secondsDelay seconds."
+          Start-Sleep $secondsDelay
+          $retrycount++
+        }
+      }
     }
+  }
+
+  #30 second delay interval for private link provisioning state = Succeeded
+  $secondsDelay = 30
+
+  #Approve Private Endpoints
+  for($i = 0; $i -le ($managedPrivateEndpointNames.Length - 1); $i += 1)
+  {
+    $retrycount = 1
+    $completed = $false
+    
+    while (-not $completed) {
+      try {
+        $managedPrivateEndpointName = $managedPrivateEndpointNames[$i]
+        $managedPrivateEndpointID = $managedPrivateEndpointIDs[$i]
+
+        # Approve KeyVault Private Endpoint
+        $privateEndpoints = Get-AzPrivateEndpointConnection -PrivateLinkResourceId $managedPrivateEndpointID -ErrorAction Stop | select-object Id, ProvisioningState, PrivateLinkServiceConnectionState
+        
+        foreach ($privateEndpoint in $privateEndpoints) {
+          if ($privateEndpoint.PrivateLinkServiceConnectionState.Status -eq "Pending") {
+            if ($privateEndpoint.ProvisioningState -eq "Succeeded") {
+              Write-Host "Approving private endpoint for $managedPrivateEndpointName."
+              Approve-AzPrivateEndpointConnection -ResourceId $privateEndpoint.Id -Description "Auto-Approved" -ErrorAction Stop  
+            }
+            else {
+              throw "Private endpoint connection not yet provisioned."
+            }
+          }
+        }
+        $completed = $true
+      }
+      catch {
+        if ($retrycount -ge $retries) {
+          Write-Host "Private endpoint approval for $managedPrivateEndpointName has failed the maximum number of $retryCount times."
+          throw
+        } else {
+          Write-Host "Private endpoint approval for $managedPrivateEndpointName has failed $retryCount time(s). Retrying in $secondsDelay seconds."
+          Write-Warning $PSItem.ToString()
+          Start-Sleep $secondsDelay
+          $retrycount++
+        }
+      }
+    }
+  }
 }
