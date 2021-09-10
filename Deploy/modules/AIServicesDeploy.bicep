@@ -259,3 +259,4 @@ module m_azureMLWorkspacePrivateLink 'PrivateEndpoint.bicep' = if(deploymentMode
 output cognitiveServicesAccountID string = r_cognitiveServices.id
 output azureMLWorkspaceIdentityPrincipalID string = r_azureMLWorkspace.identity.principalId
 output azureMLSynapseLinkedServicePrincipalID string = r_azureMLSynapseLinkedService.identity.principalId
+output azureMLWorkspaceID string = r_azureMLWorkspace.id

@@ -329,16 +329,6 @@ resource r_dataLakeRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-
   }
 }
 
-//Assign Owner Role to UAMI in the Synapse Workspace. UAMI needs to be Owner so it can assign itself as Synapse Admin and create resources in the Data Plane.
-resource r_synapseWorkspaceOwnerRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
-  name: guid(r_synapseWorkspace.name, uamiPrincipalID)
-  scope: r_synapseWorkspace
-  properties:{
-    roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', azureRBACOwnerRoleID)
-    principalId: uamiPrincipalID
-    principalType:'ServicePrincipal'
-  }
-}
 
 output dataLakeStorageAccountID string = r_dataLakeStorageAccount.id
 output dataLakeStorageAccountName string = r_dataLakeStorageAccount.name

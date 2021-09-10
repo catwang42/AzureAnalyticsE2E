@@ -20,7 +20,7 @@ param uniqueSuffix string = substring(uniqueString(resourceGroup().id),0,5)
 //********************************************************
 
 param ctrlDeployPurview bool = false     //Controls the deployment of Azure Purview
-param ctrlDeployAI bool = false          //Controls the deployment of Azure ML and Cognitive Services
+param ctrlDeployAI bool = true     //Controls the deployment of Azure ML and Cognitive Services
 param ctrlDeployStreaming bool = false   //Controls the deployment of EventHubs and Stream Analytics
 param ctrlDeployDataShare bool = false   //Controls the deployment of Azure Data Share
 param ctrlPostDeployScript bool = true  //Controls the execution of post-deployment script
@@ -435,6 +435,25 @@ resource r_dataLakeStorageAccount 'Microsoft.Storage/storageAccounts@2021-04-01'
   name: dataLakeAccountName
 }
 
+resource r_azureMLWorkspace 'Microsoft.MachineLearningServices/workspaces@2021-04-01' existing = {
+  name: azureMLWorkspaceName
+}
+
+resource r_synapseWorkspace 'Microsoft.Synapse/workspaces@2021-06-01-preview' existing = {
+  name: synapseWorkspaceName
+}
+
+//Assign Owner Role to UAMI in the Synapse Workspace. UAMI needs to be Owner so it can assign itself as Synapse Admin and create resources in the Data Plane.
+resource r_synapseWorkspaceOwnerRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
+  name: guid(r_synapseWorkspace.name, 'DeploymentScriptUAMI')
+  scope: r_synapseWorkspace
+  properties:{
+    roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', azureRBACOwnerRoleID)
+    principalId: r_deploymentScriptUAMI.properties.principalId
+    principalType:'ServicePrincipal'
+  }
+}
+
 //Assign Storage Blob Reader Role to Purview MSI in the Resource Group as per https://docs.microsoft.com/en-us/azure/purview/register-scan-synapse-workspace
 resource r_purviewRGStorageBlobDataReaderRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = if (ctrlDeployPurview == true) {
   name: guid(resourceGroup().name, purviewAccountName, 'Storage Blob Reader')
@@ -445,11 +464,28 @@ resource r_purviewRGStorageBlobDataReaderRoleAssignment 'Microsoft.Authorization
   }
 }
 
-resource r_deploymentScriptUAMIRGOwnerRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = if (deploymentMode == 'vNet') {
+//Deployment script UAMI is set as Resource Group owner so it can have authorisation to perform post deployment tasks
+resource r_deploymentScriptUAMIRGOwnerRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
   name: guid(resourceGroup().name, deploymentScriptUAMIName, 'Owner')
   properties:{
     roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', azureRBACOwnerRoleID)
     principalId: r_deploymentScriptUAMI.properties.principalId
+    principalType:'ServicePrincipal'
+  }
+}
+
+//Azure Synaspe MSI needs to have Contributor permissions in the Azure ML workspace.
+//https://docs.microsoft.com/en-us/azure/synapse-analytics/machine-learning/quickstart-integrate-azure-machine-learning#give-msi-permission-to-the-azure-ml-workspace
+resource r_synapseAzureMLContributorRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = if(ctrlDeployAI == true) {
+  name: guid(synapseWorkspaceName, azureMLWorkspaceName, 'Contributor')
+  scope: r_azureMLWorkspace
+  dependsOn:[
+    m_AIServicesDeploy
+    m_CoreServicesDeploy
+  ]
+  properties:{
+    roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', azureRBACContributorRoleID)
+    principalId: m_CoreServicesDeploy.outputs.synapseWorkspaceIdentityPrincipalID
     principalType:'ServicePrincipal'
   }
 }
@@ -489,11 +525,44 @@ resource r_azureDataShareStorageBlobDataReaderRoleAssignment 'Microsoft.Authoriz
 //********************************************************
 
 //Synapse Deployment Script
-var synapsePostDeploymentPSScript = 'aHR0cHM6Ly9jc2FkZW1vc3RvcmFnZS5ibG9iLmNvcmUud2luZG93cy5uZXQvcG9zdC1kZXBsb3ktc2NyaXB0cy9TeW5hcHNlUG9zdERlcGxveS5wczE='
+var synapsePostDeploymentPSScript = 'aHR0cHM6Ly9hemFuYWx5dGljc2VuZDJlbmQuYmxvYi5jb3JlLndpbmRvd3MubmV0L2RlcGxveXNjcmlwdHMvU3luYXBzZVBvc3REZXBsb3kucHMx'
 var azMLSynapseLinkedServiceIdentityID = ctrlDeployAI ? '-AzMLSynapseLinkedServiceIdentityID ${m_AIServicesDeploy.outputs.azureMLSynapseLinkedServicePrincipalID}' : ''
+var azMLWorkspaceName = ctrlDeployAI ? '-AzMLWorkspaceName ${azureMLWorkspaceName}' : ''
+
 resource r_synapsePostDeployScript 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
   name:'SynapsePostDeploymentScript-${deploymentDatetime}'
   dependsOn: [
+    m_CoreServicesDeploy
+    m_AIServicesDeploy
+    r_deploymentScriptUAMIRGOwnerRoleAssignment
+    //r_synapseAzureMLContributorRoleAssignment
+    r_keyVault
+  ]
+  location:resourceLocation
+  kind:'AzurePowerShell'
+  identity:{
+    type:'UserAssigned'
+    userAssignedIdentities: {
+      '${r_deploymentScriptUAMI.id}': {}
+    }
+  }
+  properties:{
+    azPowerShellVersion:'6.2'
+    cleanupPreference:'OnSuccess'
+    retentionInterval: 'P1D'
+    timeout:'PT30M'
+    arguments: '-DeploymentMode ${deploymentMode} -SubscriptionID ${subscription().subscriptionId} -ResourceGroupName ${resourceGroup().name} -WorkspaceName ${synapseWorkspaceName} -UAMIIdentityID ${r_deploymentScriptUAMI.properties.principalId} -KeyVaultName ${keyVaultName} -KeyVaultID ${r_keyVault.id} ${azMLSynapseLinkedServiceIdentityID} ${azMLWorkspaceName} -DataLakeStorageAccountName ${dataLakeAccountName} -DataLakeStorageAccountID ${m_CoreServicesDeploy.outputs.dataLakeStorageAccountID}'
+    primaryScriptUri: base64ToString(synapsePostDeploymentPSScript)
+  }
+}
+
+//Purview Deployment Script
+var purviewPostDeploymentPSScript = 'aHR0cHM6Ly9hemFuYWx5dGljc2VuZDJlbmQuYmxvYi5jb3JlLndpbmRvd3MubmV0L2RlcGxveXNjcmlwdHMvUHVydmlld1Bvc3REZXBsb3kucHMx'
+
+resource r_purviewPostDeployScript 'Microsoft.Resources/deploymentScripts@2020-10-01' = if(ctrlDeployPurview == true){
+  name:'PurviewPostDeploymentScript-${deploymentDatetime}'
+  dependsOn: [
+    m_PurviewDeploy
     m_CoreServicesDeploy
     r_deploymentScriptUAMIRGOwnerRoleAssignment
     r_keyVault
@@ -511,33 +580,7 @@ resource r_synapsePostDeployScript 'Microsoft.Resources/deploymentScripts@2020-1
     cleanupPreference:'OnSuccess'
     retentionInterval: 'P1D'
     timeout:'PT30M'
-    arguments: '-DeploymentMode ${deploymentMode} -SubscriptionID ${subscription().subscriptionId} -WorkspaceName ${synapseWorkspaceName} -UAMIIdentityID ${r_deploymentScriptUAMI.properties.principalId} -KeyVaultName ${keyVaultName} -KeyVaultID ${r_keyVault.id} ${azMLSynapseLinkedServiceIdentityID} -DataLakeStorageAccountName ${dataLakeAccountName} -DataLakeStorageAccountID ${m_CoreServicesDeploy.outputs.dataLakeStorageAccountID}'
-    primaryScriptUri: base64ToString(synapsePostDeploymentPSScript)
-  }
-}
-
-//Purview Deployment Script
-var purviewPostDeploymentPSScript = 'aHR0cHM6Ly9jc2FkZW1vc3RvcmFnZS5ibG9iLmNvcmUud2luZG93cy5uZXQvcG9zdC1kZXBsb3ktc2NyaXB0cy9QdXJ2aWV3UG9zdERlcGxveS5wczE='
-
-resource r_purviewPostDeployScript 'Microsoft.Resources/deploymentScripts@2020-10-01' = if(ctrlDeployPurview == true){
-  name:'PurviewPostDeploymentScript'
-  dependsOn: [
-    m_PurviewDeploy
-  ]
-  location:resourceLocation
-  kind:'AzurePowerShell'
-  identity:{
-    type:'UserAssigned'
-    userAssignedIdentities: {
-      '${r_deploymentScriptUAMI.id}': {}
-    }
-  }
-  properties:{
-    azPowerShellVersion:'6.2'
-    cleanupPreference:'OnSuccess'
-    retentionInterval: 'P1D'
-    timeout:'PT30M'
-    arguments: '-ScanEndpoint ${ctrlDeployPurview ? m_PurviewDeploy.outputs.purviewScanEndpoint : ''} -APIVersion ${ctrlDeployPurview ? m_PurviewDeploy.outputs.purviewAPIVersion : ''} -SynapseWorkspaceName ${m_CoreServicesDeploy.outputs.synapseWorkspaceName} -KeyVaultName ${keyVaultName} -KeyVaultID ${r_keyVault.id} -DataLakeAccountName ${m_CoreServicesDeploy.outputs.dataLakeStorageAccountName}'
+    arguments: '-PurviewAccountName ${purviewAccountName} -UAMIIdentityID ${r_deploymentScriptUAMI.properties.principalId} -ScanEndpoint ${ctrlDeployPurview ? m_PurviewDeploy.outputs.purviewScanEndpoint : ''} -APIVersion ${ctrlDeployPurview ? m_PurviewDeploy.outputs.purviewAPIVersion : ''} -SynapseWorkspaceName ${m_CoreServicesDeploy.outputs.synapseWorkspaceName} -KeyVaultName ${keyVaultName} -KeyVaultID ${r_keyVault.id} -DataLakeAccountName ${m_CoreServicesDeploy.outputs.dataLakeStorageAccountName}'
     primaryScriptUri: base64ToString(purviewPostDeploymentPSScript)
   }
 }

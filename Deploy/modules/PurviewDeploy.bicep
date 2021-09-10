@@ -15,7 +15,7 @@ var azureRBACPurviewDataSourceAdministratorRoleID = '200bba9e-f0c8-430f-892b-6f0
 var environmentStorageDNS = environment().suffixes.storage
 
 //Purview Account
-resource r_purviewAccount 'Microsoft.Purview/accounts@2020-12-01-preview' = {
+resource r_purviewAccount 'Microsoft.Purview/accounts@2021-07-01' = {
   name: purviewAccountName
   location: resourceLocation
   identity:{
@@ -31,6 +31,8 @@ resource r_purviewAccount 'Microsoft.Purview/accounts@2020-12-01-preview' = {
     managedResourceGroupName: purviewManagedRGName
   }
 }
+
+
 
 //Purview Ingestion endpoint: Blob
 resource r_privateDNSZoneBlob 'Microsoft.Network/privateDnsZones@2020-06-01' existing = {
@@ -151,10 +153,6 @@ module m_purviewPortalPrivateLink 'PrivateEndpoint.bicep' = if(deploymentMode ==
     ]
   }
 }
-
-
-
-
 
 //Assign Reader Role to Purview MSI in the Resource Group as per https://docs.microsoft.com/en-us/azure/purview/register-scan-synapse-workspace
 resource r_purviewRGReaderRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {

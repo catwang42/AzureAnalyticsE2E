@@ -1,6 +1,7 @@
 param(
   [string] $DeploymentMode,
   [string] $SubscriptionID,
+  [string] $ResourceGroupName,
   [string] $WorkspaceName,
   [string] $KeyVaultName,
   [string] $KeyVaultID,
@@ -9,7 +10,10 @@ param(
   [string] $UAMIIdentityID,
   [AllowEmptyString()]
   [Parameter(Mandatory=$false)]
-  [string] $AzMLSynapseLinkedServiceIdentityID
+  [string] $AzMLSynapseLinkedServiceIdentityID,
+  [AllowEmptyString()]
+  [Parameter(Mandatory=$false)]
+  [string] $AzMLWorkspaceName
 )
 
 $retries = 10
@@ -65,7 +69,7 @@ $uri += "/linkedservices/$KeyVaultName"
 $uri += "?api-version=2019-06-01-preview"
 
 $body = "{
-  name: ""$linkedServiceName"",
+  name: ""$KeyVaultName"",
   properties: {
       annotations: [],
       type: ""AzureKeyVault"",
@@ -96,6 +100,59 @@ while (-not $completed) {
     }
   }
 }
+
+#------------------------------------------------------------------------------------------------------------
+# CREATE AZURE ML LINKED SERVICE
+#------------------------------------------------------------------------------------------------------------
+#-AzMLWorkspaceName paramater will be passed blank if AI workloadis not deployed.
+
+if (-not ([string]::IsNullOrEmpty($AzMLWorkspaceName))) {
+  #Create Azure ML Linked Service. Linked Service name same as Key Vault's.
+  $uri = "https://$WorkspaceName.dev.azuresynapse.net"
+  $uri += "/linkedservices/$AzMLWorkspaceName"
+  $uri += "?api-version=2019-06-01-preview"
+
+  $body = "{
+    name: ""$AzMLWorkspaceName"",
+    properties: {
+      annotations: [],
+      type: ""AzureMLService"",
+      typeProperties: {
+          subscriptionId: ""$SubscriptionID"",
+          resourceGroupName: ""$ResourceGroupName"",
+          mlWorkspaceName: ""$AzMLWorkspaceName"",
+          authentication: ""MSI""
+      },
+      connectVia: {
+          referenceName: ""AutoResolveIntegrationRuntime"",
+          type: ""IntegrationRuntimeReference""
+      }
+    }
+  }"
+
+  Write-Host "Create Azure ML Linked Service..."
+  $retrycount = 1
+  $completed = $false
+
+  while (-not $completed) {
+    try {
+      Invoke-RestMethod -Method Put -ContentType "application/json" -Uri $uri -Headers $headers -Body $body -ErrorAction Stop
+      Write-Host "Linked service created successfully."
+      $completed = $true
+    }
+    catch {
+      if ($retrycount -ge $retries) {
+          Write-Host "Linked service creation failed the maximum number of $retryCount times."
+          throw
+      } else {
+          Write-Host "Linked service creation failed $retryCount time(s). Retrying in $secondsDelay seconds."
+          Start-Sleep $secondsDelay
+          $retrycount++
+      }
+    }
+  }
+}
+
 
 #------------------------------------------------------------------------------------------------------------
 # CREATE MANAGED PRIVATE ENDPOINTS
