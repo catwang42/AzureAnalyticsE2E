@@ -1,5 +1,7 @@
 param(
   [string] $PurviewAccountName,
+  [string] $SubscriptionId,
+  [string] $ResourceGroupName,
   [string] $ScanEndpoint,
   [string] $APIVersion,
   [string] $KeyVaultName,
@@ -10,16 +12,51 @@ param(
 )
 
 $retries = 10
-$secondsDelay = 5
+$secondsDelay = 10
 
-#Connect-AzAccount -Subscription 96bd7145-ad7f-445a-9763-862e32480bf1
+#------------------------------------------------------------------------------------------------------------
+# ADD UAMIIdentityID TO COLLECTION ADMINISTRATOR ROLE
+#------------------------------------------------------------------------------------------------------------
 
-$token = (Get-AzAccessToken -Resource "https://purview.azure.net").Token
+#Call Control Plane API to add UAMI as Collection Administrator
+
+$token = (Get-AzAccessToken -Resource "https://management.azure.com").Token
 $headers = @{ Authorization = "Bearer $token" }
 
+$uri = "https://management.azure.com/subscriptions/$SubscriptionId/resourceGroups/$ResourceGroupName/providers/Microsoft.Purview/accounts/$PurviewAccountName/addRootCollectionAdmin?api-version=$APIVersion"
+
+$body = "{
+  objectId: ""$UAMIIdentityID""
+}"
+
+$retrycount = 1
+$completed = $false
+
+while (-not $completed) {
+  try {
+    Invoke-RestMethod -Method Post -ContentType "application/json" -Uri $uri -Headers $headers -Body $body -ErrorAction Stop
+    $completed = $true
+  }
+  catch {
+    if ($retrycount -ge $retries) {
+        Write-Host "Metadata policy update failed the maximum number of $retryCount times."
+        throw
+    } else {
+        Write-Host "Metadata policy update failed $retryCount time(s). Retrying in $secondsDelay seconds."
+        Write-Warning $Error[0]
+        Start-Sleep $secondsDelay
+        $retrycount++
+    }
+  }
+}
+
 #------------------------------------------------------------------------------------------------------------
-# ADD UAMIIdentityID TO COLLECTION ADMINISTRATOR AND DATA SOURCE ADMINISTRATOR ROLES
+# ADD UAMIIdentityID TO DATA SOURCE ADMINISTRATOR ROLE
 #------------------------------------------------------------------------------------------------------------
+
+#Call Data Plane API to add UAMI as Data Source Administrator
+$token = (Get-AzAccessToken -Resource "https://purview.azure.net").Token
+$headers = @{ Authorization = "Bearer $token" }
 
 $PolicyId = ""
 $uri = "https://$PurviewAccountName.purview.azure.com/policystore/metadataPolicies/`?api-version=$APIVersion"
@@ -40,9 +77,8 @@ while (-not $completed) {
     #Retrieve Metadata Policy details and add Deployment Script UAMI PrincipalID to Collection Administrator and Data Source Administrator Roles.
     $result = Invoke-RestMethod -Method Get -ContentType "application/json" -Uri $uri -Headers $headers -Body $body -ErrorAction Stop
     foreach ($attributeRule in $result.properties.attributeRules) {
-      if ($attributeRule.id -like "*collection-administrator*" -or $attributeRule.id -like "*data-source-administrator*") {
+      if ($attributeRule.id -like "*data-source-administrator*") {
         if (-not ($attributeRule.dnfCondition[0][0].attributeValueIncludedIn -contains $UAMIIdentityID)) {
-          Write-Host "Add user to $attributeRule.id role..."
           $attributeRule.dnfCondition[0][0].attributeValueIncludedIn += $UAMIIdentityID  
         }
       } 
@@ -70,6 +106,10 @@ while (-not $completed) {
 #------------------------------------------------------------------------------------------------------------
 # CREATE KEY VAULT CONNECTION
 #------------------------------------------------------------------------------------------------------------
+
+$token = (Get-AzAccessToken -Resource "https://purview.azure.net").Token
+$headers = @{ Authorization = "Bearer $token" }
+
 
 $uri = $ScanEndpoint + "/azureKeyVaults/$KeyVaultName`?api-version=$APIVersion"
 #Create KeyVault Connection

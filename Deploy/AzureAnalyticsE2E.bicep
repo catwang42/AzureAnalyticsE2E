@@ -19,8 +19,8 @@ param uniqueSuffix string = substring(uniqueString(resourceGroup().id),0,5)
 // Workload Deployment Control Parameters
 //********************************************************
 
-param ctrlDeployPurview bool = false     //Controls the deployment of Azure Purview
-param ctrlDeployAI bool = true     //Controls the deployment of Azure ML and Cognitive Services
+param ctrlDeployPurview bool = true     //Controls the deployment of Azure Purview
+param ctrlDeployAI bool = false     //Controls the deployment of Azure ML and Cognitive Services
 param ctrlDeployStreaming bool = false   //Controls the deployment of EventHubs and Stream Analytics
 param ctrlDeployDataShare bool = false   //Controls the deployment of Azure Data Share
 param ctrlPostDeployScript bool = true  //Controls the execution of post-deployment script
@@ -580,7 +580,7 @@ resource r_purviewPostDeployScript 'Microsoft.Resources/deploymentScripts@2020-1
     cleanupPreference:'OnSuccess'
     retentionInterval: 'P1D'
     timeout:'PT30M'
-    arguments: '-PurviewAccountName ${purviewAccountName} -UAMIIdentityID ${r_deploymentScriptUAMI.properties.principalId} -ScanEndpoint ${ctrlDeployPurview ? m_PurviewDeploy.outputs.purviewScanEndpoint : ''} -APIVersion ${ctrlDeployPurview ? m_PurviewDeploy.outputs.purviewAPIVersion : ''} -SynapseWorkspaceName ${m_CoreServicesDeploy.outputs.synapseWorkspaceName} -KeyVaultName ${keyVaultName} -KeyVaultID ${r_keyVault.id} -DataLakeAccountName ${m_CoreServicesDeploy.outputs.dataLakeStorageAccountName}'
+    arguments: '-PurviewAccountName ${purviewAccountName} -SubscriptionID ${subscription().subscriptionId} -ResourceGroupName ${resourceGroup().name} -UAMIIdentityID ${r_deploymentScriptUAMI.properties.principalId} -ScanEndpoint ${ctrlDeployPurview ? m_PurviewDeploy.outputs.purviewScanEndpoint : ''} -APIVersion ${ctrlDeployPurview ? m_PurviewDeploy.outputs.purviewAPIVersion : ''} -SynapseWorkspaceName ${m_CoreServicesDeploy.outputs.synapseWorkspaceName} -KeyVaultName ${keyVaultName} -KeyVaultID ${r_keyVault.id} -DataLakeAccountName ${m_CoreServicesDeploy.outputs.dataLakeStorageAccountName}'
     primaryScriptUri: base64ToString(purviewPostDeploymentPSScript)
   }
 }
