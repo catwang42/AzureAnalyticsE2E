@@ -18,7 +18,6 @@ Before you hit the deploy button, make sure you review the details about the ser
 
 The Azure services in the architecture above have been divided into components that can be conditionally deployed based on the deployment parameters to better suit the needs of the workload.
 
-
 ![Achitecture Components](./Diagrams/ArchitectureComponents.png)
 
 The following services are part of the architecture and will be deployed as part of the accelerator. All services will be deployed in a single resource group and in the region where the resource group was defined.
