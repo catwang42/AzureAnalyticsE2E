@@ -20,9 +20,9 @@ param uniqueSuffix string = substring(uniqueString(resourceGroup().id),0,5)
 //********************************************************
 
 param ctrlDeployPurview bool = true     //Controls the deployment of Azure Purview
-param ctrlDeployAI bool = false     //Controls the deployment of Azure ML and Cognitive Services
-param ctrlDeployStreaming bool = false   //Controls the deployment of EventHubs and Stream Analytics
-param ctrlDeployDataShare bool = false   //Controls the deployment of Azure Data Share
+param ctrlDeployAI bool = true     //Controls the deployment of Azure ML and Cognitive Services
+param ctrlDeployStreaming bool = true   //Controls the deployment of EventHubs and Stream Analytics
+param ctrlDeployDataShare bool = true   //Controls the deployment of Azure Data Share
 param ctrlPostDeployScript bool = true  //Controls the execution of post-deployment script
 param ctrlAllowStoragePublicContainer bool = false //Controls the creation of data lake Public container
 param ctrlDeployPrivateDNSZones bool = true //Controls the creation of private DNS zones for private links
@@ -196,7 +196,6 @@ var deploymentScriptUAMIName = toLower('${resourceGroup().name}-uami')
 resource r_deploymentScriptUAMI 'Microsoft.ManagedIdentity/userAssignedIdentities@2018-11-30' = if(ctrlPostDeployScript == true) {
   name: deploymentScriptUAMIName
   location: resourceLocation
-
 }
 
 //vNet created for network protected environments (deploymentMode == 'vNet')
@@ -392,7 +391,7 @@ module m_AIServicesDeploy 'modules/AIServicesDeploy.bicep' = if(ctrlDeployAI == 
     azureMLStorageAccountName: azureMLStorageAccountName
     azureMLWorkspaceName: azureMLWorkspaceName
     cognitiveServiceAccountName: cognitiveServiceAccountName
-    keyVaultName: keyVaultName
+    keyVaultName: r_keyVault.name
     resourceLocation: resourceLocation
     synapseSparkPoolID: m_CoreServicesDeploy.outputs.synapseWorkspaceSparkID
     synapseWorkspaceID: m_CoreServicesDeploy.outputs.synapseWorkspaceID
@@ -446,6 +445,9 @@ resource r_synapseWorkspace 'Microsoft.Synapse/workspaces@2021-06-01-preview' ex
 //Assign Owner Role to UAMI in the Synapse Workspace. UAMI needs to be Owner so it can assign itself as Synapse Admin and create resources in the Data Plane.
 resource r_synapseWorkspaceOwnerRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
   name: guid(r_synapseWorkspace.name, 'DeploymentScriptUAMI')
+  dependsOn: [
+    m_CoreServicesDeploy
+  ]
   scope: r_synapseWorkspace
   properties:{
     roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', azureRBACOwnerRoleID)
@@ -457,6 +459,9 @@ resource r_synapseWorkspaceOwnerRoleAssignment 'Microsoft.Authorization/roleAssi
 //Assign Storage Blob Reader Role to Purview MSI in the Resource Group as per https://docs.microsoft.com/en-us/azure/purview/register-scan-synapse-workspace
 resource r_purviewRGStorageBlobDataReaderRoleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = if (ctrlDeployPurview == true) {
   name: guid(resourceGroup().name, purviewAccountName, 'Storage Blob Reader')
+  dependsOn:[
+    m_PurviewDeploy
+  ]
   properties:{
     roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', azureRBACStorageBlobDataReaderRoleID)
     principalId: ctrlDeployPurview ? m_PurviewDeploy.outputs.purviewIdentityPrincipalID : ''
@@ -525,7 +530,7 @@ resource r_azureDataShareStorageBlobDataReaderRoleAssignment 'Microsoft.Authoriz
 //********************************************************
 
 //Synapse Deployment Script
-var synapsePostDeploymentPSScript = 'aHR0cHM6Ly9hemFuYWx5dGljc2VuZDJlbmQuYmxvYi5jb3JlLndpbmRvd3MubmV0L2RlcGxveXNjcmlwdHMvU3luYXBzZVBvc3REZXBsb3kucHMx'
+var synapsePostDeploymentPSScript = 'aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL2ZhYnJhZ2FNUy9BenVyZUFuYWx5dGljc0UyRS9tYXN0ZXIvRGVwbG95L3NjcmlwdHMvU3luYXBzZVBvc3REZXBsb3kucHMx'
 var azMLSynapseLinkedServiceIdentityID = ctrlDeployAI ? '-AzMLSynapseLinkedServiceIdentityID ${m_AIServicesDeploy.outputs.azureMLSynapseLinkedServicePrincipalID}' : ''
 var azMLWorkspaceName = ctrlDeployAI ? '-AzMLWorkspaceName ${azureMLWorkspaceName}' : ''
 
@@ -557,7 +562,7 @@ resource r_synapsePostDeployScript 'Microsoft.Resources/deploymentScripts@2020-1
 }
 
 //Purview Deployment Script
-var purviewPostDeploymentPSScript = 'aHR0cHM6Ly9hemFuYWx5dGljc2VuZDJlbmQuYmxvYi5jb3JlLndpbmRvd3MubmV0L2RlcGxveXNjcmlwdHMvUHVydmlld1Bvc3REZXBsb3kucHMx'
+var purviewPostDeploymentPSScript = 'aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL2ZhYnJhZ2FNUy9BenVyZUFuYWx5dGljc0UyRS9tYXN0ZXIvRGVwbG95L3NjcmlwdHMvUHVydmlld1Bvc3REZXBsb3kucHMx'
 
 resource r_purviewPostDeployScript 'Microsoft.Resources/deploymentScripts@2020-10-01' = if(ctrlDeployPurview == true){
   name:'PurviewPostDeploymentScript-${deploymentDatetime}'

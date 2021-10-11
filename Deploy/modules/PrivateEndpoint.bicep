@@ -3,8 +3,6 @@ param resourceLocation string
 param privateLinkServiceId string
 param groupID string
 param subnetID string 
-//param privateDnsZoneConfigName string 
-//param privateDnsZoneId string
 param deployDNSZoneGroup bool = true
 param privateDNSZoneConfigs array
 

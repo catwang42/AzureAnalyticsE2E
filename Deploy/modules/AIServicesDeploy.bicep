@@ -216,6 +216,23 @@ resource r_azureMLWorkspace 'Microsoft.MachineLearningServices/workspaces@2021-0
       resourceId: synapseSparkPoolID
     }
   }
+
+  // resource r_dataLakeDataStore_raw 'datastores@2021-03-01-preview' = {
+  //   name: 'dataLakeDataStore_raw'
+  //   properties: {
+
+  //     contents: {
+  //       accountName: ''
+  //       containerName: 'raw'
+  //       credentials: 
+  //       protocol: 
+  //       contentsType: 'AzureDataLakeGen2'
+  //       endpoint: 
+
+  //     }
+
+  //   }
+  // }
 }
 
 resource r_azureMLSynapseLinkedService 'Microsoft.MachineLearningServices/workspaces/linkedServices@2020-09-01-preview' = {
