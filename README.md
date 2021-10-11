@@ -12,7 +12,7 @@ It's implemented through the use of [Azure Bicep](https://github.com/Azure/bicep
 
 Before you hit the deploy button, make sure you review the details about the services deployed.
 
-[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FfabragaMS%2FAzureAnalyticsE2E%2Fmaster%2FDeploy%2FAzureAnalyticsE2E.bicep)
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#blade/Microsoft_Azure_CreateUIDef/CustomDeploymentBlade/uri/https%3A%2F%2Fraw.githubusercontent.com%2FfabragaMS%2FAzureAnalyticsE2E%2Fmaster%2FDeploy%2FAzureAnalyticsE2E.json/uiFormDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FfabragaMS%2FAzureAnalyticsE2E%2Fmaster%2FDeploy%2FcreateUiDefinition.json)
 
 ## Azure Services Provisioned
 
