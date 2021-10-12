@@ -151,7 +151,7 @@
 				"ctrlDeployAI": "[steps('aiSettings').ctrlDeployAI]",
 				"ctrlDeployStreaming": "[steps('streamingSettings').ctrlDeployStreaming]",
 				"ctrlDeployDataShare": "[steps('dataSharingSettings').ctrlDeployDataShare]",
-				"ctrlDeployPrivateDNSZones": "[steps('purviewSettings').ctrlDeployPrivateDNSZones]"
+				"ctrlDeployPrivateDNSZones": "[steps('networkSettings').ctrlDeployPrivateDNSZones]"
 			}
         }
     }
