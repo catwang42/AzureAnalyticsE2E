@@ -3,6 +3,7 @@
     "view": {
 		"kind":"form",
 		"properties": {
+			"basics": [ ],
 			"steps": [
 				{
 					"name": "deploymentModeSettings",
