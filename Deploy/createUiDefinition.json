@@ -12,13 +12,7 @@
                         {
                             "name": "resourceScope",
                             "type": "Microsoft.Common.ResourceScope"
-                        }
-                    ]
-                },
-				{
-					"name": "deploymentModeSettings",
-					"label": "Deployment Mode",
-					"elements": [
+                        },
 						{
 							"name": "deploymentModeSection",
 							"type": "Microsoft.Common.Section",
@@ -60,16 +54,16 @@
 							],
 							"visible": true
 						}
-					]
-				},
+                    ]
+                },
 				{
 					"name": "coreSettings",
 					"label": "Core Settings",
 					"elements": [
 						{
-                            "name": "synapseSettings",
+                            "name": "synapseSettingsSection",
                             "type": "Microsoft.Common.Section",
-                            "label": "Synapse Settings",
+                            "label": "Azure Synapse Settings",
                             "elements": [
                                 {
                                     "name": "synapseSection",
@@ -86,7 +80,7 @@
                                 {
 									"name": "ctrlDeploySynapseSQLPool",
 									"type": "Microsoft.Common.CheckBox",
-									"label": "Deploy Synapse SQL Pool",
+									"label": "Deploy Dedicated Synapse SQL Pool",
 									"constraints": {
 										"required": false
 									}
@@ -188,13 +182,13 @@
 			"kind":"ResourceGroup",
 			"resourceGroupId": "[steps('basics').resourceScope.resourceGroup.id]",
 			"parameters":{
-				"deploymentMode": "[steps('deploymentModeSettings').deploymentModeSection.deploymentMode]",
+				"deploymentMode": "[steps('basics').deploymentModeSection.deploymentMode]",
 				"ctrlDeployPurview": "[steps('purviewSettings').ctrlDeployPurview]",
 				"ctrlDeployAI": "[steps('aiSettings').ctrlDeployAI]",
 				"ctrlDeployStreaming": "[steps('streamingSettings').ctrlDeployStreaming]",
 				"ctrlDeployDataShare": "[steps('dataSharingSettings').ctrlDeployDataShare]",
 				"ctrlDeployPrivateDNSZones": "[steps('networkSettings').ctrlDeployPrivateDNSZones]",
-				"ctrlDeploySynapseSQLPool": "[steps('coreSettings').ctrlDeploySynapseSQLPool]"
+				"ctrlDeploySynapseSQLPool": "[steps('coreSettings').synapseSettingsSection.ctrlDeploySynapseSQLPool]"
 			}
         }
     }
