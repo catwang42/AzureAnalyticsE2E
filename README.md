@@ -14,7 +14,11 @@ Before you hit the deploy button, make sure you review the details about the ser
 
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#blade/Microsoft_Azure_CreateUIDef/CustomDeploymentBlade/uri/https%3A%2F%2Fraw.githubusercontent.com%2FfabragaMS%2FAzureAnalyticsE2E%2Fmaster%2FDeploy%2FAzureAnalyticsE2E.json/uiFormDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2FfabragaMS%2FAzureAnalyticsE2E%2Fmaster%2FDeploy%2FcreateUiDefinition.json)
 
-## Azure Services Provisioned
+### Deployment Details
+
+[TODO]: Explain deployment mode
+
+### Azure Services Provisioned
 
 The Azure services in the architecture above have been divided into components that can be conditionally deployed based on the deployment parameters to better suit the needs of the workload.
 
@@ -26,7 +30,7 @@ The following services are part of the architecture and will be deployed as part
 
 Component        |Name                           | Type                      | Pricing Tier             |Pricing Info   | Conditional  |Notes
 -----------------|-------------------------------|---------------------------|--------------------------|---------------|--------------|------------
-Core             |az-*resource group name*-uami  |Managed Identity           | N/A                      |               |              | Required to run post-deployment scripts. Should be deleted once deployment is complete.
+Core             |az-*resource group name*-uami  |Managed Identity           | N/A                      |               | No           | Required to run post-deployment scripts. Should be deleted once deployment is complete.
 Core             |azsynapsewks*suffix*           |Synapse workspace          | N/A                      |               | No           |
 Core             |SparkCluster                   |Apache Spark pool          | Small (3 nodes)          |               | No           |
 Core             |EnterpriseDW                   |Synapse SQL pool           | DW100                    |               | Yes          |
@@ -45,7 +49,45 @@ Data Share       |azdatashare*suffix*            |Data Share                 | N
 Streaming        |azeventhubns*suffix*           |Event Hub namespace        | Standard                 |               | Yes          |
 Streaming        |azstreamjob*suffix*            |Stream Analytics job       | Standard                 |               | Yes          |
 
+If your deployment mode is set to 'vNet Integrated' then extra Azure services will be deployed as below:
 
+Component        |Name                               | Type                      | Pricing Tier             |Pricing Info   | Conditional  |Notes
+-----------------|-----------------------------------|---------------------------|--------------------------|---------------|--------------|------------
+Core             |privatelink.azuresynapse.net       |Private DNS Zone           | N/A                      |               | Yes          |
+Core             |privatelink.dev.azuresynapse.net   |Private DNS Zone           | N/A                      |               | Yes          |
+Core             |privatelink.azuresynapse.net       |Private DNS Zone           | N/A                      |               | Yes          |
+Core             |privatelink.sql.azuresynapse.net   |Private DNS Zone           | N/A                      |               | Yes          |
+Core             |privatelink.dfs.core.windows.net   |Private DNS Zone           | N/A                      |               | Yes          |
+Core             |privatelink.vaultcore.azure.net    |Private DNS Zone           | N/A                      |               | Yes          |
+Core             |azvnet*suffix*                     |Virtual Network            | N/A                      |               | Yes          |
+Core             |azsynapsewks*suffix*-web           |Private Endpoint           | N/A                      |               | Yes          | Private endpoints will have an associated Network Interface resource associated to it.
+Core             |azsynapsewks*suffix*-sqlserverless |Private Endpoint           | N/A                      |               | Yes          | Private endpoints will have an associated Network Interface resource associated to it.
+Core             |azsynapsewks*suffix*-sql           |Private Endpoint           | N/A                      |               | Yes          | Private endpoints will have an associated Network Interface resource associated to it.
+Core             |azsynapsewks*suffix*-dev           |Private Endpoint           | N/A                      |               | Yes          | Private endpoints will have an associated Network Interface resource associated to it.
+Core             |azkeyvault*suffix*                 |Private Endpoint           | N/A                      |               | Yes          | Private endpoints will have an associated Network Interface resource associated to it.
+Core             |azsynapsehub*suffix*               |Synapse private link hub   | N/A                      |               | Yes          | Private endpoints will have an associated Network Interface resource associated to it.
+Core             |azdatalake*suffix*-dfs               |Synapse private link hub   | N/A                      |               | Yes          | Private endpoints will have an associated Network Interface resource associated to it.
+Data Governance  |privatelink.purview.azure.com      |Private DNS Zone           | N/A                      |               | Yes          |
+Data Governance  |azpurview*suffix*-queue            |Private Endpoint           | N/A                      |               | Yes          |
+Data Governance  |azpurview*suffix*-portal           |Private Endpoint           | N/A                      |               | Yes          |
+Data Governance  |azpurview*suffix*-namespace        |Private Endpoint           | N/A                      |               | Yes          |
+Data Governance  |azpurview*suffix*-blob             |Private Endpoint           | N/A                      |               | Yes          |
+Data Governance  |azpurview*suffix*-account          |Private Endpoint           | N/A                      |               | Yes          |
+AI               |privatelink.api.azureml.ms         |Private DNS Zone           | N/A                      |               | Yes          | 
+AI               |privatelink.azurecr.io             |Private DNS Zone           | N/A                      |               | Yes          | 
+AI               |privatelink.file.core.windows.net  |Private DNS Zone           | N/A                      |               | Yes          | 
+AI               |privatelink.notebooks.azure.net    |Private DNS Zone           | N/A                      |               | Yes          | 
+AI               |azmlwks*suffix*-amlworkspace       |Private Endpoint           | N/A                      |               | Yes          | 
+AI               |azmlstorage*suffix*-file           |Private Endpoint           | N/A                      |               | Yes          | 
+AI               |azmlstorage*suffix*-blob           |Private Endpoint           | N/A                      |               | Yes          | 
+AI               |azmlcontainerreg*suffix*-registry  |Private Endpoint           | N/A                      |               | Yes          | 
+Data Governance  |privatelink.queue.core.windows.net |Private DNS Zone           | N/A                      |               | Yes          | 
+Data Governance  |privatelink.servicebus.windows.net |Private DNS Zone           | N/A                      |               | Yes          | 
+Data Governance  |privatelink.blob.core.windows.net  |Private DNS Zone           | N/A                      |               | Yes          | 
+Streaming        |azeventhubns*suffix*-namespace     |Private Endpoint           | N/A                      |               | Yes          |
+Core             |privatelink.azuresynapse.net   |Private DNS Zone           | N/A                      |               | Yes          |
+Core             |privatelink.azuresynapse.net   |Private DNS Zone           | N/A                      |               | Yes          |
+Core             |privatelink.azuresynapse.net   |Private DNS Zone           | N/A                      |               | Yes          |
 
 ## Contributing
 If you would like to contribute to the solution (log bugs, issues, or add code) we have details on how to do that in our [CONTRIBUTING.md](https://github.com/fabragaMS/AzureAnalyticsE2E/blob/master/README.md) file.

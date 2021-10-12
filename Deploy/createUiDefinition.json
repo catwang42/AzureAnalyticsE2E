@@ -48,151 +48,14 @@
 								}
 							],
 							"visible": true
-						},
-						{
-							"name": "networkSettings",
-							"type": "Microsoft.Common.Section",
-							"label": "Network Settings",
-							"elements": [
-								{
-									"name": "selectNetwork",
-									"type": "Microsoft.Common.OptionsGroup",
-									"label": "Virtual Network Option",
-									"defaultValue": "Create New",
-									"toolTip": "",
-									"constraints": {
-										"allowedValues": [
-											{
-												"label": "Create New",
-												"value": "newVNet"
-											},
-											{
-												"label": "Use Existing",
-												"value": "useVNet"
-											}
-										],
-										"required": true
-									},
-									"visible": true
-								}
-							],
-							"visible": "[equals(steps('deploymentModeSettings').deploymentModeSection.deploymentMode,'vNet')]"
 						}
 					]
 				},
 				{
-					"name": "synapseSettings",
-					"label": "Azure Synapse Settings",
+					"name": "coreSettings",
+					"label": "Core Settings",
 					"elements": [
-						{
-							"name": "infoMessage",
-							"type": "Microsoft.Common.InfoBox",
-							"visible": true,
-							"options": {
-								"icon": "Info",
-								"text": "Welcome to the Azure Ice Cream Shop"
-							}
-						},
-						{
-							"name": "iceCreamFlavors",
-							"type": "Microsoft.Common.DropDown",
-							"label": "Ice Cream Flavors",
-							"defaultValue": "Chocolate",
-							"toolTip": "",
-							"constraints": {
-								"allowedValues": [
-									{
-										"label": "Chocolate",
-										"value": "brown"
-									},
-									{
-										"label": "Strawberry",
-										"value": "pink"
-									},
-									{
-										"label": "Vanilla",
-										"value": "white"
-									},
-									{
-										"label": "Azureberry",
-										"value": "blue"
-									}
-								],
-								"required": true
-							},
-							"visible": true
-						},
-						{
-							"name": "coneType",
-							"type": "Microsoft.Common.OptionsGroup",
-							"label": "Cone Option",
-							"defaultValue": "Waffle Cone",
-							"toolTip": "",
-							"constraints": {
-								"allowedValues": [
-									{
-										"label": "Waffle Cone",
-										"value": "waffle"
-									},
-									{
-										"label": "Sugar Cone",
-										"value": "sugar"
-									},
-									{
-										"label": "Pretzel Cone",
-										"value": "pretzel"
-									},
-									{
-										"label": "None (cup)",
-										"value": "cup"
-									}
-								],
-								"required": true
-							},
-							"visible": true
-						},
-						{
-							"name": "newsletter",
-							"type": "Microsoft.Common.Section",
-							"label": "Monthly Newsletter",
-							"elements": [
-								{
-									"name": "announcement",
-									"type": "Microsoft.Common.TextBlock",
-									"visible": true,
-									"options": {
-										"text": "Join our Flavor of the Month club and never miss a single delicious announcement! No spam (no kidding). Must be at least 18 years old to register.",
-										"link": {
-											"label": "Learn more",
-											"uri": "https://www.microsoft.com"
-										}
-									}
-								},
-								{
-									"name": "emailAddress",
-									"type": "Microsoft.Common.TextBox",
-									"label": "Email",
-									"defaultValue": "",
-									"toolTip": "Please enter a valid email account",
-									"constraints": {
-										"required": false,
-										"regex": "^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\\.[a-zA-Z0-9-.]+$",
-										"validationMessage": "Email is not valid. Please re-enter."
-									},
-									"visible": true
-								},
-								{
-									"name": "legalAccept",
-									"type": "Microsoft.Common.CheckBox",
-									"label": "I agree to the terms and conditions.",
-									"constraints": {
-										"required": true,
-										"validationMessage": "Please acknowledge the legal conditions."
-									}
-								}
-							],
-							"visible": true
-						}
+						
 					]
 				},
 				{
@@ -206,81 +69,12 @@
 							"constraints": {
 								"required": false
 							}
-						},
-						{
-							"name": "vmSection",
-							"type": "Microsoft.Common.Section",
-							"label": "Customize your VM",
-							"elements": [
-								{
-									"name": "vmSize",
-									"type": "Microsoft.Compute.SizeSelector",
-									"label": "Size",
-									"toolTip": "",
-									"recommendedSizes": [
-										"Standard_D1",
-										"Standard_D2",
-										"Standard_D3",
-										"Standard_B1s"
-									],
-									"constraints": {
-										"allowedSizes": []
-									},
-									"options": {
-										"hideDiskTypeFilter": false
-									},
-									"osPlatform": "Windows",
-									"imageReference": {
-										"publisher": "MicrosoftWindowsServer",
-										"offer": "WindowsServer",
-										"sku": "2012-R2-Datacenter"
-									},
-									"count": 2,
-									"visible": true
-								}
-							],
-							"visible": true
-						},
-						{
-							"name": "adminUsername",
-							"type": "Microsoft.Compute.UserNameTextBox",
-							"label": "Admin Username",
-							"defaultValue": "",
-							"toolTip": "",
-							"constraints": {
-								"required": true,
-								"regex": "^[a-z0-9A-Z]{1,30}$",
-								"validationMessage": "Only alphanumeric characters are allowed, and the value must be 1-30 characters long."
-							},
-							"osPlatform": "Windows",
-							"visible": true
-						},
-						{
-							"name": "vmCredentials",
-							"type": "Microsoft.Compute.CredentialsCombo",
-							"label": {
-								"password": "Password",
-								"confirmPassword": "Confirm password"
-							},
-							"toolTip": {
-								"password": ""
-							},
-							"constraints": {
-								"required": true,
-								"customPasswordRegex": "^(?=.*\\d)(?=.*[a-z])(?=.*[A-Z])[\\w~@#$%^&*+=|{}:;!.?\\()\\[\\]-]{8,}$",
-								"customValidationMessage": "The password must contain at least 8 characters, with at least 1 uppercase, 1 lowercase and 1 number."
-							},
-							"options": {
-								"hideConfirmation": false
-							},
-							"osPlatform": "Windows",
-							"visible": true
 						}
 					]
 				},
 				{
 					"name": "aiSettings",
-					"label": "AI Workload Settings",
+					"label": "AI Settings",
 					"elements": [
 						{
 							"name": "ctrlDeployAI",
@@ -289,78 +83,12 @@
 							"constraints": {
 								"required": false
 							}
-						},
-						{
-							"name": "storageInfo",
-							"type": "Microsoft.Common.TextBlock",
-							"visible": true,
-							"options": {
-								"text": "There are two controls which you can use for gathering storage requirements. They are the single and multi Storage Account selectors featured below.",
-								"link": {
-									"label": "",
-									"uri": ""
-								}
-							}
-						},
-						{
-							"name": "sectionStorage1",
-							"type": "Microsoft.Common.Section",
-							"label": "Single Selector",
-							"elements": [
-								{
-									"name": "singleStorage",
-									"type": "Microsoft.Storage.StorageAccountSelector",
-									"label": "Storage account",
-									"toolTip": "",
-									"defaultValue": {
-										"name": "uniquestorageaccount01",
-										"type": "Premium_LRS"
-									},
-									"constraints": {
-										"allowedTypes": []
-									},
-									"options": {
-										"hideExisting": false
-									},
-									"visible": true
-								}
-							],
-							"visible": true
-						},
-						{
-							"name": "sectionStorage2",
-							"type": "Microsoft.Common.Section",
-							"label": "Multi Selector",
-							"elements": [
-								{
-									"name": "multiStorage",
-									"type": "Microsoft.Storage.MultiStorageAccountCombo",
-									"label": {
-										"prefix": "Storage account prefix",
-										"type": "Storage account type"
-									},
-									"toolTip": {
-										"prefix": "",
-										"type": ""
-									},
-									"defaultValue": {
-										"prefix": "aprefix",
-										"type": "Premium_LRS"
-									},
-									"constraints": {
-										"excludedTypes": []
-									},
-									"count": 2,
-									"visible": true
-								}
-							],
-							"visible": true
 						}
 					]
 				},
 				{
-					"name": "streamSettings",
-					"label": "Streaming Workload Settings",
+					"name": "streamingSettings",
+					"label": "Streaming Settings",
 					"elements": [
 						{
 							"name": "ctrlDeployStreaming",
@@ -369,109 +97,12 @@
 							"constraints": {
 								"required": false
 							}
-						},
-						{
-							"name": "networkingInfo",
-							"type": "Microsoft.Common.TextBlock",
-							"visible": true,
-							"options": {
-								"text": "There are two controls tailored towards gathering network requirements. They are the Public IP Address and Virtual Network combos seen below.",
-								"link": {
-									"label": "",
-									"uri": ""
-								}
-							}
-						},
-						{
-							"name": "sectionNetworking1",
-							"type": "Microsoft.Common.Section",
-							"label": "Public IP Address",
-							"elements": [
-								{
-									"name": "publicIp",
-									"type": "Microsoft.Network.PublicIpAddressCombo",
-									"label": {
-										"publicIpAddress": "Public IP address",
-										"domainNameLabel": "Domain name label"
-									},
-									"toolTip": {
-										"publicIpAddress": "",
-										"domainNameLabel": ""
-									},
-									"defaultValue": {
-										"publicIpAddressName": "ip01",
-										"domainNameLabel": "mydomain"
-									},
-									"constraints": {
-										"required": {
-											"domainNameLabel": true
-										}
-									},
-									"options": {
-										"hideNone": false,
-										"hideDomainNameLabel": false,
-										"hideExisting": false,
-										"zone": 3
-									},
-									"visible": true
-								}
-							],
-							"visible": true
-						},
-						{
-							"name": "vnet",
-							"type": "Microsoft.Network.VirtualNetworkCombo",
-							"label": {
-								"virtualNetwork": "Virtual network",
-								"subnets": "Subnets"
-							},
-							"toolTip": {
-								"virtualNetwork": "",
-								"subnets": ""
-							},
-							"defaultValue": {
-								"name": "vnet01",
-								"addressPrefixSize": "/16"
-							},
-							"constraints": {
-								"minAddressPrefixSize": "/16"
-							},
-							"options": {
-								"hideExisting": false
-							},
-							"subnets": {
-								"subnet1": {
-									"label": "First subnet",
-									"defaultValue": {
-										"name": "subnet-1",
-										"addressPrefixSize": "/24"
-									},
-									"constraints": {
-										"minAddressPrefixSize": "/24",
-										"minAddressCount": 12,
-										"requireContiguousAddresses": true
-									}
-								},
-								"subnet2": {
-									"label": "Second subnet",
-									"defaultValue": {
-										"name": "subnet-2",
-										"addressPrefixSize": "/26"
-									},
-									"constraints": {
-										"minAddressPrefixSize": "/26",
-										"minAddressCount": 8,
-										"requireContiguousAddresses": true
-									}
-								}
-							},
-							"visible": true
 						}
 					]
 				},
 				{
-					"name": "dataShareSettings",
-					"label": "Data Share Settings",
+					"name": "dataSharingSettings",
+					"label": "Data Sharing Settings",
 					"elements": [
 						{
 							"name": "ctrlDeployDataShare",
@@ -480,40 +111,6 @@
 							"constraints": {
 								"required": false
 							}
-						},
-						{
-							"name": "storageBlobSelectorSection",
-							"type": "Microsoft.Common.Section",
-							"label": "Select storage blob",
-							"elements": [
-								{
-									"name": "storageBlobSelection",
-									"type": "Microsoft.Storage.StorageBlobSelector",
-									"visible": true,
-									"toolTip": "Select storage blob",
-									"label": "Package (.cspkg, .zip)",
-									"options": {
-										"text": "Select Package"
-									},
-									"constraints": {
-									"allowedFileExtensions": [ "zip", "cspkg" ]
-								}
-							}
-						]
-						},
-						{
-							"name": "keyVaultCertificateSelectorSection",
-							"type": "Microsoft.Common.Section",
-							"label": "Select keyVault certificate",
-							"elements": [
-								{
-									"name": "keyVaultCertificateSelection",
-									"type": "Microsoft.KeyVault.KeyVaultCertificateSelector",
-									"visible": true,
-									"toolTip": "Select certificate",
-									"label": "KeyVault certificates selection"
-								}
-							]
 						}
 					]
 				},
@@ -522,132 +119,11 @@
 					"label": "Network Settings",
 					"elements": [
 						{
-							"name": "miscInfo",
-							"type": "Microsoft.Common.TextBlock",
-							"visible": true,
-							"options": {
-								"text": "Users can upload local data using the FileUpload control and enter a password using the PasswordBox. The PasswordBox differs slightly from the CredentialsCombo because it doesn't provide an option for SSH key authentication.",
-								"link": {
-									"label": "",
-									"uri": ""
-								}
-							}
-						},
-						{
-							"name": "fileSelect",
-							"type": "Microsoft.Common.FileUpload",
-							"label": "Select a file",
-							"toolTip": "Only Word and XML files accepted",
+							"name": "ctrlDeployPrivateDNSZones",
+							"type": "Microsoft.Common.CheckBox",
+							"label": "Deploy Private DNS Zones",
 							"constraints": {
-								"required": false,
-								"accept": ".doc,.docx,.xml,application/msword"
-							},
-							"options": {
-								"multiple": false,
-								"uploadMode": "file",
-								"openMode": "text",
-								"encoding": "UTF-8"
-							},
-							"visible": true
-						},
-						{
-							"name": "password",
-							"type": "Microsoft.Common.PasswordBox",
-							"label": {
-								"password": "Password"
-							},
-							"toolTip": "",
-							"constraints": {
-								"required": true,
-								"regex": "",
-								"validationMessage": ""
-							},
-							"options": {
-								"hideConfirmation": true
-							},
-							"visible": true
-						},
-						{
-							"name": "people",
-							"type": "Microsoft.Common.EditableGrid",
-							"ariaLabel": "Enter information per person",
-							"label": "People",
-							"constraints": {
-								"width": "Full",
-								"rows": {
-									"count": {
-										"min": 1,
-										"max": 10
-									}
-								},
-								"columns": [
-									{
-										"id": "colName",
-										"header": "Name",
-										"width": "1fr",
-										"element": {
-											"type": "Microsoft.Common.TextBox",
-											"placeholder": "Full name",
-											"constraints": {
-												"required": true,
-												"validations": [
-													{
-														"regex": "^[a-z0-9A-Z]{1,30}$",
-														"message": "Only alphanumeric characters are allowed, and the value must be 1-30 characters long."
-													}
-												]
-											}
-										}
-									},
-									{
-										"id": "colGender",
-										"header": "Gender",
-										"width": "1fr",
-										"element": {
-											"name": "dropDown1",
-											"type": "Microsoft.Common.DropDown",
-											"placeholder": "Select a gender...",
-											"constraints": {
-												"allowedValues": [
-													{
-														"label": "Female",
-														"value": "female"
-													},
-													{
-														"label": "Male",
-														"value": "male"
-													},
-													{
-														"label": "Other",
-														"value": "other"
-													}
-												],
-												"required": true
-											}
-										}
-									},
-									{
-										"id": "colContactPreference",
-										"header": "Contact preference",
-										"width": "1fr",
-										"element": {
-											"type": "Microsoft.Common.OptionsGroup",
-											"constraints": {
-												"allowedValues": [
-													{
-														"label": "Email",
-														"value": "email"
-													},
-													{
-														"label": "Text",
-														"value": "text"
-													}
-												],
-												"required": true
-											}
-										}
-									}
-								]
+								"required": false
 							}
 						}
 					]
@@ -671,7 +147,11 @@
         "outputs": {
 			"parameters":{
 				"deploymentMode": "[steps('deploymentModeSettings').deploymentModeSection.deploymentMode]",
-				"ctrlDeployPurview": "[steps('purviewSettings').ctrlDeployPurview]"
+				"ctrlDeployPurview": "[steps('purviewSettings').ctrlDeployPurview]",
+				"ctrlDeployAI": "[steps('aiSettings').ctrlDeployAI]",
+				"ctrlDeployStreaming": "[steps('streamingSettings').ctrlDeployStreaming]",
+				"ctrlDeployDataShare": "[steps('dataSharingSettings').ctrlDeployDataShare]",
+				"ctrlDeployPrivateDNSZones": "[steps('purviewSettings').ctrlDeployPrivateDNSZones]"
 			}
         }
     }
