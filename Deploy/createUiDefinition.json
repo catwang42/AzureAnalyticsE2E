@@ -152,9 +152,25 @@
 						}
 					]
 				}
-			]
+			],
+			"deployment": {
+                "kind": "ResourceGroup",
+                "resourceGroupId": "[steps('basics').resourceScope.resourceGroup.id]",
+                "parameters":{
+					"deploymentMode": "[steps('deploymentModeSettings').deploymentModeSection.deploymentMode]",
+					"ctrlDeployPurview": "[steps('purviewSettings').ctrlDeployPurview]",
+					"ctrlDeployAI": "[steps('aiSettings').ctrlDeployAI]",
+					"ctrlDeployStreaming": "[steps('streamingSettings').ctrlDeployStreaming]",
+					"ctrlDeployDataShare": "[steps('dataSharingSettings').ctrlDeployDataShare]",
+					"ctrlDeployPrivateDNSZones": "[steps('networkSettings').ctrlDeployPrivateDNSZones]"
+				},
+                "template": {
+                    "file": "<ARM deployment template relative path>"
+                }
+            }
 		},
         "outputs": {
+			"kind":"ResourceGroup",
 			"parameters":{
 				"deploymentMode": "[steps('deploymentModeSettings').deploymentModeSection.deploymentMode]",
 				"ctrlDeployPurview": "[steps('purviewSettings').ctrlDeployPurview]",
