@@ -30,7 +30,7 @@
 									"name": "deploymentMode",
 									"type": "Microsoft.Common.OptionsGroup",
 									"label": "Deployment Mode",
-									"defaultValue": "vNet Integrated",
+									"defaultValue": "Default (public endpoints)",
 									"toolTip": "",
 									"constraints": {
 										"allowedValues": [
