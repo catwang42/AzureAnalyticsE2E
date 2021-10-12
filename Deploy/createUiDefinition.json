@@ -77,14 +77,26 @@
                                         }
                                     }
                                 },
-                                {
+								{
 									"name": "ctrlDeploySynapseSQLPool",
-									"type": "Microsoft.Common.CheckBox",
+									"type": "Microsoft.Common.OptionsGroup",
 									"label": "Create Dedicated Synapse SQL Pool",
-									"toolTip": "Synapse SQL Dedicated Pool will be provisioned at DW100c performance level. Please scale up as required once provisioning is complete.",
+									"defaultValue": "Yes (recommended)",
+									"toolTip": "A Synapse Dedicated SQL Pool will be provisioned at DW100 performance level. Please scale up as required once provisioning is complete.",
 									"constraints": {
-										"required": false
-									}
+										"allowedValues": [
+										{
+											"label": "Yes (recommended)",
+											"value": "Yes"
+										},
+										{
+											"label": "No",
+											"value": "No"
+										}
+										],
+										"required": true
+									},
+									"visible": true
 								},
 								{
 									"name": "synapseDedicatedSQLPoolName",
@@ -98,17 +110,28 @@
 										"regex": "^[a-z0-9A-Z]{1,30}$",
 										"validationMessage": "Only alphanumeric characters are allowed, and the value must be 1-30 characters long."
 									},
-									"visible": true,
-									"disabled": "[equals(steps('coreSettings').synapseSettingsSection.ctrlDeploySynapseSQLPool, true)]"
+									"visible": "[equals(steps('coreSettings').synapseSettingsSection.ctrlDeploySynapseSQLPool, 'Yes')]"
 								},
 								{
 									"name": "ctrlDeploySynapseSparkPool",
-									"type": "Microsoft.Common.CheckBox",
+									"type": "Microsoft.Common.OptionsGroup",
 									"label": "Create Synapse Spark Pool",
+									"defaultValue": "Yes (recommended)",
 									"toolTip": "A 'Small' Synapse Spark Pool will be provisioned. Please scale up as required once provisioning is complete.",
 									"constraints": {
-										"required": false
-									}
+										"allowedValues": [
+										{
+											"label": "Yes (recommended)",
+											"value": "Yes"
+										},
+										{
+											"label": "No",
+											"value": "No"
+										}
+										],
+										"required": true
+									},
+									"visible": true
 								},
 								{
 									"name": "synapseSparkPoolName",
@@ -122,8 +145,7 @@
 										"regex": "^[a-z0-9A-Z]{1,30}$",
 										"validationMessage": "Only alphanumeric characters are allowed, and the value must be 1-30 characters long."
 									},
-									"visible": true,
-									"disabled": "[equals(steps('coreSettings').synapseSettingsSection.ctrlDeploySynapseSparkPool, true)]"
+									"visible": "[equals(steps('coreSettings').synapseSettingsSection.ctrlDeploySynapseSparkPool, 'Yes')]"
 								},
 								{
 									"name": "synapseSqlAdminUserName",
@@ -303,9 +325,9 @@
 				"ctrlDeployStreaming": "[steps('streamingSettings').ctrlDeployStreaming]",
 				"ctrlDeployDataShare": "[steps('dataSharingSettings').ctrlDeployDataShare]",
 				"ctrlDeployPrivateDNSZones": "[steps('networkSettings').ctrlDeployPrivateDNSZones]",
-				"ctrlDeploySynapseSQLPool": "[steps('coreSettings').synapseSettingsSection.ctrlDeploySynapseSQLPool]",
+				"ctrlDeploySynapseSQLPool": "[equals(steps('coreSettings').synapseSettingsSection.ctrlDeploySynapseSQLPool, 'Yes')]",
 				"synapseDedicatedSQLPoolName": "[steps('coreSettings').synapseSettingsSection.synapseDedicatedSQLPoolName]",
-				"ctrlDeploySynapseSparkPool": "[steps('coreSettings').synapseSettingsSection.ctrlDeploySynapseSparkPool]",
+				"ctrlDeploySynapseSparkPool": "[equals(steps('coreSettings').synapseSettingsSection.ctrlDeploySynapseSparkPool, 'Yes')]",
 				"synapseSparkPoolName": "[steps('coreSettings').synapseSettingsSection.synapseSparkPoolName]",
 				"allowSharedKeyAccess": "[steps('coreSettings').dataLakeSettingsSection.allowSharedKeyAccess]",
 				"synapseSqlAdminUserName": "[steps('coreSettings').synapseSettingsSection.synapseSqlAdminUserName]",
