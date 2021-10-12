@@ -3,7 +3,7 @@
     "view": {
 		"kind":"form",
 		"properties": {
-			"title": "Azure Analytics End to End with Azure Synapse - Deployment Accelerator",
+			"title": "Analytics end-to-end with Azure Synapse - Deployment Accelerator",
 			"steps": [
 				{
                     "name": "basics",
@@ -81,10 +81,48 @@
 									"name": "ctrlDeploySynapseSQLPool",
 									"type": "Microsoft.Common.CheckBox",
 									"label": "Deploy Dedicated Synapse SQL Pool",
+									"toolTip": "Synapse SQL Dedicated Pool will be provisioned with DW100c SKU.",
 									"constraints": {
 										"required": false
 									}
+								},
+								{
+									"name": "synapseDedicatedSQLPoolName",
+									"type": "Microsoft.Common.TextBox",
+									"label": "Synapse SQL Pool Name",
+									"placeholder": "",
+									"defaultValue": "EnterpriseDW",
+									"toolTip": "Use only allowed characters",
+									"constraints": {
+										"required": true,
+										"regex": "^[a-z0-9A-Z]{1,30}$",
+										"validationMessage": "Only alphanumeric characters are allowed, and the value must be 1-30 characters long."
+									},
+									"visible": "[equals(steps('coreSettings').synapseSettingsSection.ctrlDeploySynapseSQLPool, true)]"
+								},
+								{
+									"name": "ctrlDeploySynapseSparkPool",
+									"type": "Microsoft.Common.CheckBox",
+									"label": "Deploy Dedicated Synapse Spark Pool",
+									"constraints": {
+										"required": false
+									}
+								},
+								{
+									"name": "synapseSparkPoolName",
+									"type": "Microsoft.Common.TextBox",
+									"label": "Synapse Spark Pool Name",
+									"placeholder": "",
+									"defaultValue": "SparkCluster",
+									"toolTip": "Use only allowed characters",
+									"constraints": {
+										"required": true,
+										"regex": "^[a-z0-9A-Z]{1,30}$",
+										"validationMessage": "Only alphanumeric characters are allowed, and the value must be 1-30 characters long."
+									},
+									"visible": "[equals(steps('coreSettings').synapseSettingsSection.ctrlDeploySynapseSparkPool, true)]"
 								}
+								
                             ],
                             "visible": true
                         }
@@ -158,7 +196,8 @@
 							"default":true,
 							"constraints": {
 								"required": false
-							}
+							},
+							"visible": "[equals(steps('basics').deploymentModeSection.deploymentMode, 'vNet')]"
 						}
 					]
 				},
@@ -188,7 +227,11 @@
 				"ctrlDeployStreaming": "[steps('streamingSettings').ctrlDeployStreaming]",
 				"ctrlDeployDataShare": "[steps('dataSharingSettings').ctrlDeployDataShare]",
 				"ctrlDeployPrivateDNSZones": "[steps('networkSettings').ctrlDeployPrivateDNSZones]",
-				"ctrlDeploySynapseSQLPool": "[steps('coreSettings').synapseSettingsSection.ctrlDeploySynapseSQLPool]"
+				"ctrlDeploySynapseSQLPool": "[steps('coreSettings').synapseSettingsSection.ctrlDeploySynapseSQLPool]",
+				"synapseDedicatedSQLPoolName": "[steps('coreSettings').synapseSettingsSection.synapseDedicatedSQLPoolName]",
+				"ctrlDeploySynapseSparkPool": "[steps('coreSettings').synapseSettingsSection.ctrlDeploySynapseSparkPool]",
+				"synapseSparkPoolName": "[steps('coreSettings').synapseSettingsSection.synapseSparkPoolName]"
+
 			}
         }
     }

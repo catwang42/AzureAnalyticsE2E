@@ -26,7 +26,7 @@ param ctrlDeployDataShare bool = true   //Controls the deployment of Azure Data 
 param ctrlPostDeployScript bool = true  //Controls the execution of post-deployment script
 param ctrlAllowStoragePublicContainer bool = false //Controls the creation of data lake Public container
 param ctrlDeployPrivateDNSZones bool = true //Controls the creation of private DNS zones for private links
-param ctrlDeploySynapseSQLPool bool = false //Controls the creation of Synapse SQL Pool
+
 param deploymentDatetime string = utcNow()
 //********************************************************
 // Resource Config Parameters
@@ -89,11 +89,17 @@ param synapseSqlAdminPassword string = 'P@ssw0rd123!'
 @description('Synapse Managed Resource Group Name')
 param synapseManagedRGName string = '${synapseWorkspaceName}-mrg'
 
+@description('Deploy SQL Pool')
+param ctrlDeploySynapseSQLPool bool = false //Controls the creation of Synapse SQL Pool
+
 @description('SQL Pool Name')
 param synapseDedicatedSQLPoolName string = 'EnterpriseDW'
 
 @description('SQL Pool SKU')
 param synapseSQLPoolSKU string = 'DW100c'
+
+@description('Deploy Spark Pool')
+param ctrlDeploySynapseSparkPool bool = false //Controls the creation of Synapse Spark Pool
 
 @description('Spark Pool Name')
 param synapseSparkPoolName string = 'SparkCluster'
@@ -340,6 +346,7 @@ module m_CoreServicesDeploy 'modules/CoreServicesDeploy.bicep' = {
     ctrlAllowStoragePublicContainer: ctrlAllowStoragePublicContainer
     ctrlDeployPrivateDNSZones: ctrlDeployPrivateDNSZones
     ctrlDeploySynapseSQLPool: ctrlDeploySynapseSQLPool
+    ctrlDeploySynapseSparkPool: ctrlDeploySynapseSparkPool
     dataLakeAccountName: dataLakeAccountName
     dataLakeCuratedZoneName: dataLakeCuratedZoneName
     dataLakePublicZoneName: dataLakePublicZoneName
@@ -394,7 +401,7 @@ module m_AIServicesDeploy 'modules/AIServicesDeploy.bicep' = if(ctrlDeployAI == 
     keyVaultName: r_keyVault.name
     resourceLocation: resourceLocation
     synapseSparkPoolID: m_CoreServicesDeploy.outputs.synapseWorkspaceSparkID
-    synapseWorkspaceID: m_CoreServicesDeploy.outputs.synapseWorkspaceID
+    synapseWorkspaceID: ctrlDeploySynapseSparkPool ? m_CoreServicesDeploy.outputs.synapseWorkspaceID : ''
     synapseWorkspaceName: m_CoreServicesDeploy.outputs.synapseWorkspaceName
     deploymentMode: deploymentMode
     vNetSubnetID: r_subNet.id

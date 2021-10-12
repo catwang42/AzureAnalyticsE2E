@@ -208,7 +208,7 @@ resource r_azureMLWorkspace 'Microsoft.MachineLearningServices/workspaces@2021-0
     containerRegistry: r_azureMLContainerRegistry.id
   }
 
-  resource r_azureMLSynapseSparkCompute 'computes' = {
+  resource r_azureMLSynapseSparkCompute 'computes' = if(synapseSparkPoolID != '') {
     name: 'SynapseSparkPool'
     location: resourceLocation
     properties:{

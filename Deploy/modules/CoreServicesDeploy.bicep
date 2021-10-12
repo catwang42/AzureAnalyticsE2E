@@ -4,6 +4,7 @@ param resourceLocation string
 param ctrlAllowStoragePublicContainer bool
 param ctrlDeployPrivateDNSZones bool
 param ctrlDeploySynapseSQLPool bool
+param ctrlDeploySynapseSparkPool bool
 
 param vNetSubnetID string
 
@@ -186,7 +187,7 @@ resource r_synapseWorkspace 'Microsoft.Synapse/workspaces@2021-03-01' = {
   }
 
   //Spark Pool
-  resource r_sparkPool 'bigDataPools' = {
+  resource r_sparkPool 'bigDataPools' = if(ctrlDeploySynapseSparkPool == true){
     name: synapseSparkPoolName
     location: resourceLocation
     properties:{
