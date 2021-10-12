@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.3.255.40792",
-      "templateHash": "4350686123126838048"
+      "templateHash": "8281724350384599564"
     }
   },
   "parameters": {
@@ -61,10 +61,6 @@
     "ctrlDeployPrivateDNSZones": {
       "type": "bool",
       "defaultValue": true
-    },
-    "ctrlDeploySynapseSQLPool": {
-      "type": "bool",
-      "defaultValue": false
     },
     "deploymentDatetime": {
       "type": "string",
@@ -189,6 +185,13 @@
         "description": "Synapse Managed Resource Group Name"
       }
     },
+    "ctrlDeploySynapseSQLPool": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Deploy SQL Pool"
+      }
+    },
     "synapseDedicatedSQLPoolName": {
       "type": "string",
       "defaultValue": "EnterpriseDW",
@@ -201,6 +204,13 @@
       "defaultValue": "DW100c",
       "metadata": {
         "description": "SQL Pool SKU"
+      }
+    },
+    "ctrlDeploySynapseSparkPool": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Deploy Spark Pool"
       }
     },
     "synapseSparkPoolName": {
@@ -1850,6 +1860,9 @@
           "ctrlDeploySynapseSQLPool": {
             "value": "[parameters('ctrlDeploySynapseSQLPool')]"
           },
+          "ctrlDeploySynapseSparkPool": {
+            "value": "[parameters('ctrlDeploySynapseSparkPool')]"
+          },
           "dataLakeAccountName": {
             "value": "[parameters('dataLakeAccountName')]"
           },
@@ -1924,7 +1937,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.3.255.40792",
-              "templateHash": "15400630906762234337"
+              "templateHash": "2524870233823380168"
             }
           },
           "parameters": {
@@ -1941,6 +1954,9 @@
               "type": "bool"
             },
             "ctrlDeploySynapseSQLPool": {
+              "type": "bool"
+            },
+            "ctrlDeploySynapseSparkPool": {
               "type": "bool"
             },
             "vNetSubnetID": {
@@ -2098,6 +2114,7 @@
               ]
             },
             {
+              "condition": "[equals(parameters('ctrlDeploySynapseSparkPool'), true())]",
               "type": "Microsoft.Synapse/workspaces/bigDataPools",
               "apiVersion": "2021-03-01",
               "name": "[format('{0}/{1}', parameters('synapseWorkspaceName'), parameters('synapseSparkPoolName'))]",
@@ -3618,7 +3635,7 @@
             "value": "[reference(resourceId('Microsoft.Resources/deployments', 'CoreServicesDeploy'), '2019-10-01').outputs.synapseWorkspaceSparkID.value]"
           },
           "synapseWorkspaceID": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'CoreServicesDeploy'), '2019-10-01').outputs.synapseWorkspaceID.value]"
+            "value": "[if(parameters('ctrlDeploySynapseSparkPool'), reference(resourceId('Microsoft.Resources/deployments', 'CoreServicesDeploy'), '2019-10-01').outputs.synapseWorkspaceID.value, '')]"
           },
           "synapseWorkspaceName": {
             "value": "[reference(resourceId('Microsoft.Resources/deployments', 'CoreServicesDeploy'), '2019-10-01').outputs.synapseWorkspaceName.value]"
@@ -3640,7 +3657,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.3.255.40792",
-              "templateHash": "15566681491931795839"
+              "templateHash": "5491171453459885166"
             }
           },
           "parameters": {
@@ -3715,6 +3732,7 @@
               ]
             },
             {
+              "condition": "[not(equals(parameters('synapseSparkPoolID'), ''))]",
               "type": "Microsoft.MachineLearningServices/workspaces/computes",
               "apiVersion": "2021-04-01",
               "name": "[format('{0}/{1}', parameters('azureMLWorkspaceName'), 'SynapseSparkPool')]",

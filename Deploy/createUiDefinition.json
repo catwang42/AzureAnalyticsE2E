@@ -80,8 +80,8 @@
                                 {
 									"name": "ctrlDeploySynapseSQLPool",
 									"type": "Microsoft.Common.CheckBox",
-									"label": "Deploy Dedicated Synapse SQL Pool",
-									"toolTip": "Synapse SQL Dedicated Pool will be provisioned with DW100c SKU.",
+									"label": "Create Dedicated Synapse SQL Pool",
+									"toolTip": "Synapse SQL Dedicated Pool will be provisioned at DW100c performance level. Please scale up as required once provisioning is complete.",
 									"constraints": {
 										"required": false
 									}
@@ -98,12 +98,14 @@
 										"regex": "^[a-z0-9A-Z]{1,30}$",
 										"validationMessage": "Only alphanumeric characters are allowed, and the value must be 1-30 characters long."
 									},
-									"visible": "[equals(steps('coreSettings').synapseSettingsSection.ctrlDeploySynapseSQLPool, true)]"
+									"visible": true,
+									"disabled": "[equals(steps('coreSettings').synapseSettingsSection.ctrlDeploySynapseSQLPool, true)]"
 								},
 								{
 									"name": "ctrlDeploySynapseSparkPool",
 									"type": "Microsoft.Common.CheckBox",
-									"label": "Deploy Dedicated Synapse Spark Pool",
+									"label": "Create Synapse Spark Pool",
+									"toolTip": "A 'Small' Synapse Spark Pool will be provisioned. Please scale up as required once provisioning is complete.",
 									"constraints": {
 										"required": false
 									}
@@ -120,9 +122,83 @@
 										"regex": "^[a-z0-9A-Z]{1,30}$",
 										"validationMessage": "Only alphanumeric characters are allowed, and the value must be 1-30 characters long."
 									},
-									"visible": "[equals(steps('coreSettings').synapseSettingsSection.ctrlDeploySynapseSparkPool, true)]"
+									"visible": true,
+									"disabled": "[equals(steps('coreSettings').synapseSettingsSection.ctrlDeploySynapseSparkPool, true)]"
+								},
+								{
+									"name": "synapseSqlAdminUserName",
+									"type": "Microsoft.Common.TextBox",
+									"label": "Synapse SQL Admin User Name",
+									"placeholder": "",
+									"defaultValue": "azsynapseadmin",
+									"toolTip": "Use only allowed characters",
+									"constraints": {
+										"required": true,
+										"regex": "^[a-z0-9A-Z]{1,30}$",
+										"validationMessage": "Only alphanumeric characters are allowed, and the value must be 1-30 characters long."
+									}
+								},
+								{
+									"name": "synapseSqlAdminPassword",
+									"type": "Microsoft.Common.PasswordBox",
+									"label": {
+										"password": "Password",
+										"confirmPassword": "Confirm password"
+									},
+									"toolTip": "",
+									"constraints": {
+										"required": true,
+										"regex": "^[a-zA-Z0-9]{8,}$",
+										"validationMessage": "Password must be at least 8 characters long, contain only numbers and letters"
+									},
+									"options": {
+										"hideConfirmation": false
+									},
+									"visible": true
 								}
 								
+								
+                            ],
+                            "visible": true
+                        },
+						{
+                            "name": "dataLakeSettingsSection",
+                            "type": "Microsoft.Common.Section",
+                            "label": "Azure Data Lake Storage Gen 2 Settings",
+                            "elements": [
+                                {
+                                    "name": "dataLakeSection",
+                                    "type": "Microsoft.Common.TextBlock",
+                                    "visible": true,
+                                    "options": {
+                                        "text": "Please configure your Azure Data Lake Storage Gen 2 account.",
+                                        "link": {
+                                            "label": "Learn more",
+                                            "uri": "https://www.microsoft.com"
+                                        }
+                                    }
+                                },
+                                {
+									"name": "allowSharedKeyAccess",
+									"type": "Microsoft.Common.CheckBox",
+									"label": "Allow Shared Key authorization",
+									"toolTip": "Enable shared key authorization. If enabled, ensure your access keys are protected.",
+									"constraints": {
+										"required": false
+									}
+								},
+								{
+									"name": "manageAccessKeys",
+									"type": "Microsoft.Common.TextBlock",
+									"visible": true,
+									"options": {
+										"text": "If Shared Key authorization is enabled, make sure you keep your access keys secure by following the best practices recommendations.",
+										"link": {
+										"label": "Learn more",
+										"uri": "https://docs.microsoft.com/azure/storage/common/storage-account-keys-manage"
+										}
+									}
+}
                             ],
                             "visible": true
                         }
@@ -230,8 +306,10 @@
 				"ctrlDeploySynapseSQLPool": "[steps('coreSettings').synapseSettingsSection.ctrlDeploySynapseSQLPool]",
 				"synapseDedicatedSQLPoolName": "[steps('coreSettings').synapseSettingsSection.synapseDedicatedSQLPoolName]",
 				"ctrlDeploySynapseSparkPool": "[steps('coreSettings').synapseSettingsSection.ctrlDeploySynapseSparkPool]",
-				"synapseSparkPoolName": "[steps('coreSettings').synapseSettingsSection.synapseSparkPoolName]"
-
+				"synapseSparkPoolName": "[steps('coreSettings').synapseSettingsSection.synapseSparkPoolName]",
+				"allowSharedKeyAccess": "[steps('coreSettings').dataLakeSettingsSection.allowSharedKeyAccess]",
+				"synapseSqlAdminUserName": "[steps('coreSettings').synapseSettingsSection.synapseSqlAdminUserName]",
+				"synapseSqlAdminPassword": "[steps('coreSettings').synapseSettingsSection.synapseSqlAdminPassword]"
 			}
         }
     }
