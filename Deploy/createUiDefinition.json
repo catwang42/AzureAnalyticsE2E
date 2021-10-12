@@ -3,17 +3,17 @@
     "view": {
 		"kind":"form",
 		"properties": {
-			"basics": [
-				{
-					"name": "textBox1",
-					"type": "Microsoft.Common.TextBox",
-					"label": "Textbox on basics",
-					"defaultValue": "my text value",
-					"toolTip": "",
-					"visible": true
-				}
-			],
 			"steps": [
+				{
+                    "name": "basics",
+                    "label": "Basics",
+                    "elements": [
+                        {
+                            "name": "resourceScope",
+                            "type": "Microsoft.Common.ResourceScope"
+                        }
+                    ]
+                },
 				{
 					"name": "deploymentModeSettings",
 					"label": "Deployment Mode",
