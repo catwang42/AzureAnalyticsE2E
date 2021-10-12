@@ -132,6 +132,7 @@
 							"name": "ctrlDeployPrivateDNSZones",
 							"type": "Microsoft.Common.CheckBox",
 							"label": "Deploy Private DNS Zones",
+							"default":true,
 							"constraints": {
 								"required": false
 							}
