@@ -238,13 +238,13 @@
 					]
 				},
 				{
-					"name": "dataGovernanceSettings",
-					"label": "Data Governance Settings",
+					"name": "workloadComponents",
+					"label": "Workload Components",
 					"elements": [
 						{
                             "name": "purviewSettingsSection",
                             "type": "Microsoft.Common.Section",
-                            "label": "Azure Purview Settings",
+                            "label": "Data Governance Settings",
                             "elements": [
                                 {
                                     "name": "purviewSection",
@@ -280,86 +280,93 @@
 									"visible": true
 								}
 							]
-						}
-					]
-				},
-				{
-					"name": "aiSettings",
-					"label": "AI Settings",
-					"elements": [
-						{
-							"name": "aiServicesInfo",
-							"type": "Microsoft.Common.InfoBox",
-							"visible": true,
-							"options": {
-								"icon": "Info",
-								"text": "AI services include Azure Machine Learning, Anomaly Detector and Cognitive Services.",
-								"uri": "https://www.microsoft.com"
-							}
 						},
 						{
-							"name": "ctrlDeployAI",
-							"type": "Microsoft.Common.OptionsGroup",
-							"label": "Deploy AI Services",
-							"defaultValue": "Yes (recommended)",
-							"toolTip": "",
-							"constraints": {
-								"allowedValues": [
-								{
-									"label": "Yes (recommended)",
-									"value": "Yes"
-								},
-								{
-									"label": "No",
-									"value": "No"
-								}
-								],
-								"required": true
-							},
-							"visible": true
-						}
-					]
-				},
-				{
-					"name": "streamingSettings",
-					"label": "Streaming Settings",
-					"elements": [
-						{
-							"name": "streamingServicesInfo",
-							"type": "Microsoft.Common.InfoBox",
-							"visible": true,
-							"options": {
-								"icon": "Info",
-								"text": "Data streaming services include Azure EventHubs, Azure IoT Hub and Stream Analytics.",
-								"uri": "https://www.microsoft.com"
-							}
-						},
-						{
-							"name": "ctrlDeployStreaming",
-							"type": "Microsoft.Common.OptionsGroup",
-							"label": "Deploy Data Streaming Services",
-							"defaultValue": "Yes (recommended)",
-							"toolTip": "",
-							"constraints": {
-								"allowedValues": [
-								{
-									"label": "Yes (recommended)",
-									"value": "Yes"
-								},
-								{
-									"label": "No",
-									"value": "No"
-								}
-								],
-								"required": true
-							},
-							"visible": true
-						},
-						{
-                            "name": "ingestionSelectionSection",
+                            "name": "aiSettingsSection",
                             "type": "Microsoft.Common.Section",
-                            "label": "Data Stream Ingestion",
+                            "label": "AI Settings",
                             "elements": [
+                                {
+                                    "name": "aiSection",
+                                    "type": "Microsoft.Common.TextBlock",
+                                    "visible": true,
+                                    "options": {
+                                        "text": "Please configure your AI workload.",
+                                        "link": {
+                                            "label": "Learn more",
+                                            "uri": "https://www.microsoft.com"
+                                        }
+                                    }
+                                },
+								{
+									"name": "aiServicesInfo",
+									"type": "Microsoft.Common.InfoBox",
+									"visible": true,
+									"options": {
+										"icon": "Info",
+										"text": "AI services include Azure Machine Learning, Anomaly Detector and Cognitive Services.",
+										"uri": "https://www.microsoft.com"
+									}
+								},
+								{
+									"name": "ctrlDeployAI",
+									"type": "Microsoft.Common.OptionsGroup",
+									"label": "Deploy AI Services",
+									"defaultValue": "Yes (recommended)",
+									"toolTip": "",
+									"constraints": {
+										"allowedValues": [
+										{
+											"label": "Yes (recommended)",
+											"value": "Yes"
+										},
+										{
+											"label": "No",
+											"value": "No"
+										}
+										],
+										"required": true
+									},
+									"visible": true
+								}
+							]
+						},
+						{
+							"name": "streamingSettings",
+							"type": "Microsoft.Common.Section",
+							"label": "Streaming Settings",
+							"elements": [
+								{
+									"name": "streamingServicesInfo",
+									"type": "Microsoft.Common.InfoBox",
+									"visible": true,
+									"options": {
+										"icon": "Info",
+										"text": "Data streaming services include Azure EventHubs, Azure IoT Hub and Stream Analytics.",
+										"uri": "https://www.microsoft.com"
+									}
+								},
+								{
+									"name": "ctrlDeployStreaming",
+									"type": "Microsoft.Common.OptionsGroup",
+									"label": "Deploy Data Streaming Services",
+									"defaultValue": "Yes (recommended)",
+									"toolTip": "",
+									"constraints": {
+										"allowedValues": [
+										{
+											"label": "Yes (recommended)",
+											"value": "Yes"
+										},
+										{
+											"label": "No",
+											"value": "No"
+										}
+										],
+										"required": true
+									},
+									"visible": true
+								},
 								{
 									"name": "streamIngestionChoice",
 									"type": "Microsoft.Common.OptionsGroup",
@@ -379,35 +386,38 @@
 										],
 										"required": true
 									},
+									"visible": "[equals(steps('workloadComponents').streamingSettings.ctrlDeployStreaming, 'Yes')]"
+								}
+							],
+							"visible": true
+						},
+						{
+							"name": "dataSharingSettings",
+							"type": "Microsoft.Common.Section",
+							"label": "Data Sharing Settings",
+							"elements": [
+								{
+									"name": "ctrlDeployDataShare",
+									"type": "Microsoft.Common.OptionsGroup",
+									"label": "Deploy Azure Data Share",
+									"defaultValue": "Yes (recommended)",
+									"toolTip": "",
+									"constraints": {
+										"allowedValues": [
+										{
+											"label": "Yes (recommended)",
+											"value": "Yes"
+										},
+										{
+											"label": "No",
+											"value": "No"
+										}
+										],
+										"required": true
+									},
 									"visible": true
 								}
-							]
-						}
-					]
-				},
-				{
-					"name": "dataSharingSettings",
-					"label": "Data Sharing Settings",
-					"elements": [
-						{
-							"name": "ctrlDeployDataShare",
-							"type": "Microsoft.Common.OptionsGroup",
-							"label": "Deploy Azure Data Share",
-							"defaultValue": "Yes (recommended)",
-							"toolTip": "",
-							"constraints": {
-								"allowedValues": [
-								{
-									"label": "Yes (recommended)",
-									"value": "Yes"
-								},
-								{
-									"label": "No",
-									"value": "No"
-								}
-								],
-								"required": true
-							},
+							],
 							"visible": true
 						}
 					]
@@ -470,19 +480,18 @@
 			"resourceGroupId": "[steps('basics').resourceScope.resourceGroup.id]",
 			"parameters":{
 				"deploymentMode": "[steps('basics').deploymentModeSection.deploymentMode]",
-				"ctrlDeployPurview": "[equals(steps('dataGovernanceSettings').purviewSettingsSection.ctrlDeployPurview, 'Yes')]",
-				"ctrlDeployAI": "[equals(steps('aiSettings').ctrlDeployAI, 'Yes')]",
-				"ctrlDeployStreaming": "[equals(steps('streamingSettings').ctrlDeployStreaming, 'Yes')]",
-				"ctrlDeployDataShare": "[equals(steps('dataSharingSettings').ctrlDeployDataShare, 'Yes')]",
-				"ctrlDeployPrivateDNSZones": "[equals(steps('networkSettings').ctrlDeployPrivateDNSZones, 'Yes')]",
+				"ctrlDeployPurview": "[equals(steps('workloadComponents').purviewSettingsSection.ctrlDeployPurview, 'Yes')]",
+				"ctrlDeployAI": "[equals(steps('workloadComponents').aiSettingsSection.ctrlDeployAI, 'Yes')]",
+				"ctrlDeployStreaming": "[equals(steps('workloadComponents').streamingSettings.ctrlDeployStreaming, 'Yes')]",
+				"ctrlDeployDataShare": "[equals(steps('workloadComponents').dataSharingSettings.ctrlDeployDataShare, 'Yes')]",
+				"ctrlDeployPrivateDNSZones": "[steps('networkSettings').ctrlDeployPrivateDNSZones]",
 				"ctrlDeploySynapseSQLPool": "[equals(steps('coreSettings').synapseSettingsSection.ctrlDeploySynapseSQLPool, 'Yes')]",
 				"synapseDedicatedSQLPoolName": "[steps('coreSettings').synapseSettingsSection.synapseDedicatedSQLPoolName]",
 				"ctrlDeploySynapseSparkPool": "[equals(steps('coreSettings').synapseSettingsSection.ctrlDeploySynapseSparkPool, 'Yes')]",
 				"synapseSparkPoolName": "[steps('coreSettings').synapseSettingsSection.synapseSparkPoolName]",
 				"allowSharedKeyAccess": "[steps('coreSettings').dataLakeSettingsSection.allowSharedKeyAccess]",
 				"synapseSqlAdminUserName": "[steps('coreSettings').synapseSettingsSection.synapseSqlAdminUserName]",
-				"synapseSqlAdminPassword": "[steps('coreSettings').synapseSettingsSection.synapseSqlAdminPassword]",
-				""
+				"synapseSqlAdminPassword": "[steps('coreSettings').synapseSettingsSection.synapseSqlAdminPassword]"
 			}
         }
     }
