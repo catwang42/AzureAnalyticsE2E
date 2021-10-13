@@ -180,8 +180,8 @@
 									"toolTip": "",
 									"constraints": {
 										"required": true,
-										"regex": "^[a-zA-Z0-9]{8,}$",
-										"validationMessage": "Password must be at least 8 characters long, contain only numbers and letters"
+										"regex": "(?=^.{8,}$)(?=.*\\d)(?=.*[!@#$%^&*]+)(?![.\\n])(?=.*[A-Z])(?=.*[a-z]).*$",
+										"validationMessage": "Password must be at least 8 characters long, including both uppercase and lowercase characters, numbers and special characters."
 									},
 									"options": {
 										"hideConfirmation": false
