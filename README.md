@@ -16,7 +16,9 @@ Before you hit the deploy button, make sure you review the details about the ser
 
 ### Deployment Details
 
-[TODO]: Explain deployment mode
+The solution accelerator can be deployed in two modes **default** (which is the default) or **vNet**. 
+|**default**    |Deploys the selected components to Azure.|
+|**vNet**       |Extends on the default deployment mode by deploying additional services to support private connectivity and restricted inter-service connectivity where possible. This includes configurations such as managed virtual network deployments for Azure Synapse Analytics, Private Endpoints for services such as Azure Key Vault/Data Lake Storage/Synpase Dedicated SQL Pools and supporting Private DNS Zones.|
 
 ### Azure Services Provisioned
 
