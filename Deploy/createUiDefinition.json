@@ -61,6 +61,16 @@
 					"label": "Core Settings",
 					"elements": [
 						{
+							"name": "coreServicesInfo",
+							"type": "Microsoft.Common.InfoBox",
+							"visible": true,
+							"options": {
+								"icon": "Info",
+								"text": "Core services include Azure Synapse Analytics, Azure Data Lake Storage Gen 2 and Azure Key Vault",
+								"uri": "https://www.microsoft.com"
+							}
+						},
+						{
                             "name": "synapseSettingsSection",
                             "type": "Microsoft.Common.Section",
                             "label": "Azure Synapse Settings",
@@ -220,7 +230,7 @@
 										"uri": "https://docs.microsoft.com/azure/storage/common/storage-account-keys-manage"
 										}
 									}
-}
+								}
                             ],
                             "visible": true
                         }
@@ -228,16 +238,48 @@
 					]
 				},
 				{
-					"name": "purviewSettings",
-					"label": "Azure Purview Settings",
+					"name": "dataGovernanceSettings",
+					"label": "Data Governance Settings",
 					"elements": [
 						{
-							"name": "ctrlDeployPurview",
-							"type": "Microsoft.Common.CheckBox",
-							"label": "Deploy Azure Purview",
-							"constraints": {
-								"required": false
-							}
+                            "name": "purviewSettingsSection",
+                            "type": "Microsoft.Common.Section",
+                            "label": "Azure Purview Settings",
+                            "elements": [
+                                {
+                                    "name": "purviewSection",
+                                    "type": "Microsoft.Common.TextBlock",
+                                    "visible": true,
+                                    "options": {
+                                        "text": "Please configure your Purview account.",
+                                        "link": {
+                                            "label": "Learn more",
+                                            "uri": "https://www.microsoft.com"
+                                        }
+                                    }
+                                },
+								{
+									"name": "ctrlDeployPurview",
+									"type": "Microsoft.Common.OptionsGroup",
+									"label": "Deploy Azure Purview",
+									"defaultValue": "Yes (recommended)",
+									"toolTip": "",
+									"constraints": {
+										"allowedValues": [
+										{
+											"label": "Yes (recommended)",
+											"value": "Yes"
+										},
+										{
+											"label": "No",
+											"value": "No"
+										}
+										],
+										"required": true
+									},
+									"visible": true
+								}
+							]
 						}
 					]
 				},
@@ -246,12 +288,35 @@
 					"label": "AI Settings",
 					"elements": [
 						{
-							"name": "ctrlDeployAI",
-							"type": "Microsoft.Common.CheckBox",
-							"label": "Deploy AI Services",
-							"constraints": {
-								"required": false
+							"name": "aiServicesInfo",
+							"type": "Microsoft.Common.InfoBox",
+							"visible": true,
+							"options": {
+								"icon": "Info",
+								"text": "AI services include Azure Machine Learning, Anomaly Detector and Cognitive Services.",
+								"uri": "https://www.microsoft.com"
 							}
+						},
+						{
+							"name": "ctrlDeployAI",
+							"type": "Microsoft.Common.OptionsGroup",
+							"label": "Deploy AI Services",
+							"defaultValue": "Yes (recommended)",
+							"toolTip": "",
+							"constraints": {
+								"allowedValues": [
+								{
+									"label": "Yes (recommended)",
+									"value": "Yes"
+								},
+								{
+									"label": "No",
+									"value": "No"
+								}
+								],
+								"required": true
+							},
+							"visible": true
 						}
 					]
 				},
@@ -260,12 +325,63 @@
 					"label": "Streaming Settings",
 					"elements": [
 						{
-							"name": "ctrlDeployStreaming",
-							"type": "Microsoft.Common.CheckBox",
-							"label": "Deploy Data Streaming Services",
-							"constraints": {
-								"required": false
+							"name": "streamingServicesInfo",
+							"type": "Microsoft.Common.InfoBox",
+							"visible": true,
+							"options": {
+								"icon": "Info",
+								"text": "Data streaming services include Azure EventHubs, Azure IoT Hub and Stream Analytics.",
+								"uri": "https://www.microsoft.com"
 							}
+						},
+						{
+							"name": "ctrlDeployStreaming",
+							"type": "Microsoft.Common.OptionsGroup",
+							"label": "Deploy Data Streaming Services",
+							"defaultValue": "Yes (recommended)",
+							"toolTip": "",
+							"constraints": {
+								"allowedValues": [
+								{
+									"label": "Yes (recommended)",
+									"value": "Yes"
+								},
+								{
+									"label": "No",
+									"value": "No"
+								}
+								],
+								"required": true
+							},
+							"visible": true
+						},
+						{
+                            "name": "ingestionSelectionSection",
+                            "type": "Microsoft.Common.Section",
+                            "label": "Data Stream Ingestion",
+                            "elements": [
+								{
+									"name": "streamIngestionChoice",
+									"type": "Microsoft.Common.OptionsGroup",
+									"label": "Data stream ingestion service",
+									"defaultValue": "Azure Event Hubs",
+									"toolTip": "",
+									"constraints": {
+										"allowedValues": [
+										{
+											"label": "Azure Event Hubs",
+											"value": "EventHub"
+										},
+										{
+											"label": "Azure IoT Hub",
+											"value": "IoTHub"
+										}
+										],
+										"required": true
+									},
+									"visible": true
+								}
+							]
 						}
 					]
 				},
@@ -275,11 +391,24 @@
 					"elements": [
 						{
 							"name": "ctrlDeployDataShare",
-							"type": "Microsoft.Common.CheckBox",
+							"type": "Microsoft.Common.OptionsGroup",
 							"label": "Deploy Azure Data Share",
+							"defaultValue": "Yes (recommended)",
+							"toolTip": "",
 							"constraints": {
-								"required": false
-							}
+								"allowedValues": [
+								{
+									"label": "Yes (recommended)",
+									"value": "Yes"
+								},
+								{
+									"label": "No",
+									"value": "No"
+								}
+								],
+								"required": true
+							},
+							"visible": true
 						}
 					]
 				},
@@ -288,12 +417,33 @@
 					"label": "Network Settings",
 					"elements": [
 						{
+							"name": "networkDefaultInfo",
+							"type": "Microsoft.Common.InfoBox",
+							"visible": "[equals(steps('basics').deploymentModeSection.deploymentMode, 'default')]",
+							"options": {
+								"icon": "Warning",
+								"text": "Your Deployment Mode is set to 'Default (Public Endpoints)' and all services will be deployed with public endpoints. Please review the firewall configuration for the deployed services to allow connectivity from approved networks.",
+								"uri": "https://www.microsoft.com"
+							}
+						},
+						{
 							"name": "ctrlDeployPrivateDNSZones",
-							"type": "Microsoft.Common.CheckBox",
+							"type": "Microsoft.Common.OptionsGroup",
 							"label": "Deploy Private DNS Zones",
-							"default":true,
+							"defaultValue": "Yes (recommended)",
+							"toolTip": "",
 							"constraints": {
-								"required": false
+								"allowedValues": [
+								{
+									"label": "Yes (recommended)",
+									"value": "Yes"
+								},
+								{
+									"label": "No",
+									"value": "No"
+								}
+								],
+								"required": true
 							},
 							"visible": "[equals(steps('basics').deploymentModeSection.deploymentMode, 'vNet')]"
 						}
@@ -320,18 +470,19 @@
 			"resourceGroupId": "[steps('basics').resourceScope.resourceGroup.id]",
 			"parameters":{
 				"deploymentMode": "[steps('basics').deploymentModeSection.deploymentMode]",
-				"ctrlDeployPurview": "[steps('purviewSettings').ctrlDeployPurview]",
-				"ctrlDeployAI": "[steps('aiSettings').ctrlDeployAI]",
-				"ctrlDeployStreaming": "[steps('streamingSettings').ctrlDeployStreaming]",
-				"ctrlDeployDataShare": "[steps('dataSharingSettings').ctrlDeployDataShare]",
-				"ctrlDeployPrivateDNSZones": "[steps('networkSettings').ctrlDeployPrivateDNSZones]",
+				"ctrlDeployPurview": "[equals(steps('dataGovernanceSettings').purviewSettingsSection.ctrlDeployPurview, 'Yes')]",
+				"ctrlDeployAI": "[equals(steps('aiSettings').ctrlDeployAI, 'Yes')]",
+				"ctrlDeployStreaming": "[equals(steps('streamingSettings').ctrlDeployStreaming, 'Yes')]",
+				"ctrlDeployDataShare": "[equals(steps('dataSharingSettings').ctrlDeployDataShare, 'Yes')]",
+				"ctrlDeployPrivateDNSZones": "[equals(steps('networkSettings').ctrlDeployPrivateDNSZones, 'Yes')]",
 				"ctrlDeploySynapseSQLPool": "[equals(steps('coreSettings').synapseSettingsSection.ctrlDeploySynapseSQLPool, 'Yes')]",
 				"synapseDedicatedSQLPoolName": "[steps('coreSettings').synapseSettingsSection.synapseDedicatedSQLPoolName]",
 				"ctrlDeploySynapseSparkPool": "[equals(steps('coreSettings').synapseSettingsSection.ctrlDeploySynapseSparkPool, 'Yes')]",
 				"synapseSparkPoolName": "[steps('coreSettings').synapseSettingsSection.synapseSparkPoolName]",
 				"allowSharedKeyAccess": "[steps('coreSettings').dataLakeSettingsSection.allowSharedKeyAccess]",
 				"synapseSqlAdminUserName": "[steps('coreSettings').synapseSettingsSection.synapseSqlAdminUserName]",
-				"synapseSqlAdminPassword": "[steps('coreSettings').synapseSettingsSection.synapseSqlAdminPassword]"
+				"synapseSqlAdminPassword": "[steps('coreSettings').synapseSettingsSection.synapseSqlAdminPassword]",
+				""
 			}
         }
     }
