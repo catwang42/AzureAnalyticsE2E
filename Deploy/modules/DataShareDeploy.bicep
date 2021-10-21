@@ -1,5 +1,6 @@
 param dataShareAccountName string
 param resourceLocation string
+param purviewCatalogUri string
 
 //Data Share Account
 resource r_dataShareAccount 'Microsoft.DataShare/accounts@2020-09-01' = {
@@ -7,6 +8,9 @@ resource r_dataShareAccount 'Microsoft.DataShare/accounts@2020-09-01' = {
   location:resourceLocation
   identity:{
     type:'SystemAssigned'
+  }
+  tags:{
+    catalogUri:purviewCatalogUri
   }
 }
 

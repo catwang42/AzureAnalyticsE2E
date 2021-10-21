@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.3.255.40792",
-      "templateHash": "8281724350384599564"
+      "templateHash": "2836799909844619596"
     }
   },
   "parameters": {
@@ -62,9 +62,21 @@
       "type": "bool",
       "defaultValue": true
     },
+    "ctrlNewOrExistingVNet": {
+      "type": "string",
+      "defaultValue": "new",
+      "allowedValues": [
+        "new",
+        "existing"
+      ]
+    },
     "deploymentDatetime": {
       "type": "string",
       "defaultValue": "[utcNow()]"
+    },
+    "existingVNetResourceGroupName": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().name]"
     },
     "vNetName": {
       "type": "string",
@@ -73,9 +85,11 @@
         "description": "Virtual Network Name"
       }
     },
-    "vNetIPAddressPrefix": {
-      "type": "string",
-      "defaultValue": "10.1.0.0/16",
+    "vNetIPAddressPrefixes": {
+      "type": "array",
+      "defaultValue": [
+        "10.1.0.0/16"
+      ],
       "metadata": {
         "description": "Virtual Network IP Address Space"
       }
@@ -367,9 +381,11 @@
     "azureRBACContributorRoleID": "b24988ac-6180-42a0-ab88-20f7382dd24c",
     "azureRBACOwnerRoleID": "8e3af657-a8ff-443c-a75c-2fe8c4bcb635",
     "deploymentScriptUAMIName": "[toLower(format('{0}-uami', resourceGroup().name))]",
-    "synapsePostDeploymentPSScript": "aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL2ZhYnJhZ2FNUy9BenVyZUFuYWx5dGljc0UyRS9tYXN0ZXIvRGVwbG95L3NjcmlwdHMvU3luYXBzZVBvc3REZXBsb3kucHMx",
+    "vNetID": "[if(equals(parameters('ctrlNewOrExistingVNet'), 'new'), resourceId('Microsoft.Network/virtualNetworks', parameters('vNetName')), resourceId(subscription().subscriptionId, parameters('existingVNetResourceGroupName'), 'Microsoft.Network/virtualNetworks', parameters('vNetName')))]",
+    "subnetID": "[if(equals(parameters('ctrlNewOrExistingVNet'), 'new'), resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vNetName'), parameters('vNetSubnetName')), format('{0}/subnets/{1}', variables('vNetID'), parameters('vNetSubnetName')))]",
+    "synapsePostDeploymentPSScript": "aHR0cHM6Ly9hemFuYWx5dGljc2VuZDJlbmQuYmxvYi5jb3JlLndpbmRvd3MubmV0L2RlcGxveXNjcmlwdHMvU3luYXBzZVBvc3REZXBsb3kucHMx",
     "azMLWorkspaceName": "[if(parameters('ctrlDeployAI'), format('-AzMLWorkspaceName {0}', parameters('azureMLWorkspaceName')), '')]",
-    "purviewPostDeploymentPSScript": "aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL2ZhYnJhZ2FNUy9BenVyZUFuYWx5dGljc0UyRS9tYXN0ZXIvRGVwbG95L3NjcmlwdHMvUHVydmlld1Bvc3REZXBsb3kucHMx"
+    "purviewPostDeploymentPSScript": "aHR0cHM6Ly9hemFuYWx5dGljc2VuZDJlbmQuYmxvYi5jb3JlLndpbmRvd3MubmV0L2RlcGxveXNjcmlwdHMvUHVydmlld1Bvc3REZXBsb3kucHMx"
   },
   "resources": [
     {
@@ -404,21 +420,19 @@
       "location": "[parameters('resourceLocation')]"
     },
     {
-      "condition": "[equals(parameters('deploymentMode'), 'vNet')]",
+      "condition": "[and(equals(parameters('deploymentMode'), 'vNet'), equals(parameters('ctrlNewOrExistingVNet'), 'new'))]",
       "type": "Microsoft.Network/virtualNetworks",
       "apiVersion": "2020-11-01",
       "name": "[parameters('vNetName')]",
       "location": "[parameters('resourceLocation')]",
       "properties": {
         "addressSpace": {
-          "addressPrefixes": [
-            "[parameters('vNetIPAddressPrefix')]"
-          ]
+          "addressPrefixes": "[parameters('vNetIPAddressPrefixes')]"
         }
       }
     },
     {
-      "condition": "[equals(parameters('deploymentMode'), 'vNet')]",
+      "condition": "[and(equals(parameters('deploymentMode'), 'vNet'), equals(parameters('ctrlNewOrExistingVNet'), 'new'))]",
       "type": "Microsoft.Network/virtualNetworks/subnets",
       "apiVersion": "2020-11-01",
       "name": "[format('{0}/{1}', parameters('vNetName'), parameters('vNetSubnetName'))]",
@@ -613,11 +627,12 @@
         "cleanupPreference": "OnSuccess",
         "retentionInterval": "P1D",
         "timeout": "PT30M",
-        "arguments": "[format('-PurviewAccountName {0} -SubscriptionID {1} -ResourceGroupName {2} -UAMIIdentityID {3} -ScanEndpoint {4} -APIVersion {5} -SynapseWorkspaceName {6} -KeyVaultName {7} -KeyVaultID {8} -DataLakeAccountName {9}', parameters('purviewAccountName'), subscription().subscriptionId, resourceGroup().name, reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('deploymentScriptUAMIName'))).principalId, if(parameters('ctrlDeployPurview'), reference(resourceId('Microsoft.Resources/deployments', 'PurviewDeploy'), '2019-10-01').outputs.purviewScanEndpoint.value, ''), if(parameters('ctrlDeployPurview'), reference(resourceId('Microsoft.Resources/deployments', 'PurviewDeploy'), '2019-10-01').outputs.purviewAPIVersion.value, ''), reference(resourceId('Microsoft.Resources/deployments', 'CoreServicesDeploy'), '2019-10-01').outputs.synapseWorkspaceName.value, parameters('keyVaultName'), resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), reference(resourceId('Microsoft.Resources/deployments', 'CoreServicesDeploy'), '2019-10-01').outputs.dataLakeStorageAccountName.value)]",
+        "arguments": "[format('-PurviewAccountName {0} -SubscriptionID {1} -ResourceGroupName {2} -UAMIIdentityID {3} -ScanEndpoint {4} -APIVersion {5} -SynapseWorkspaceName {6} -KeyVaultName {7} -KeyVaultID {8} -DataLakeAccountName {9} {10}', parameters('purviewAccountName'), subscription().subscriptionId, resourceGroup().name, reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('deploymentScriptUAMIName'))).principalId, if(parameters('ctrlDeployPurview'), reference(resourceId('Microsoft.Resources/deployments', 'PurviewDeploy'), '2019-10-01').outputs.purviewScanEndpoint.value, ''), if(parameters('ctrlDeployPurview'), reference(resourceId('Microsoft.Resources/deployments', 'PurviewDeploy'), '2019-10-01').outputs.purviewAPIVersion.value, ''), reference(resourceId('Microsoft.Resources/deployments', 'CoreServicesDeploy'), '2019-10-01').outputs.synapseWorkspaceName.value, parameters('keyVaultName'), resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), reference(resourceId('Microsoft.Resources/deployments', 'CoreServicesDeploy'), '2019-10-01').outputs.dataLakeStorageAccountName.value, if(parameters('ctrlDeployDataShare'), format('-DataShareIdentityID {0}', reference(resourceId('Microsoft.Resources/deployments', 'DataShareDeploy'), '2019-10-01').outputs.dataShareAccountPrincipalID.value), ''))]",
         "primaryScriptUri": "[base64ToString(variables('purviewPostDeploymentPSScript'))]"
       },
       "dependsOn": [
         "[resourceId('Microsoft.Resources/deployments', 'CoreServicesDeploy')]",
+        "[resourceId('Microsoft.Resources/deployments', 'DataShareDeploy')]",
         "[resourceId('Microsoft.Resources/deployments', 'PurviewDeploy')]",
         "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('deploymentScriptUAMIName'))]",
         "[resourceId('Microsoft.Authorization/roleAssignments', guid(resourceGroup().name, variables('deploymentScriptUAMIName'), 'Owner'))]",
@@ -648,7 +663,7 @@
             "value": "[parameters('resourceLocation')]"
           },
           "subnetID": {
-            "value": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vNetName'), parameters('vNetSubnetName'))]"
+            "value": "[variables('subnetID')]"
           },
           "deployDNSZoneGroup": {
             "value": "[parameters('ctrlDeployPrivateDNSZones')]"
@@ -739,7 +754,8 @@
       },
       "dependsOn": [
         "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
-        "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vNetName'), parameters('vNetSubnetName'))]"
+        "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vNetName'), parameters('vNetSubnetName'))]",
+        "[resourceId('Microsoft.Network/virtualNetworks', parameters('vNetName'))]"
       ]
     },
     {
@@ -754,7 +770,7 @@
         "mode": "Incremental",
         "parameters": {
           "vNetID": {
-            "value": "[resourceId('Microsoft.Network/virtualNetworks', parameters('vNetName'))]"
+            "value": "[variables('vNetID')]"
           },
           "vNetName": {
             "value": "[parameters('vNetName')]"
@@ -1927,7 +1943,7 @@
             "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('deploymentScriptUAMIName'))).principalId]"
           },
           "vNetSubnetID": {
-            "value": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vNetName'), parameters('vNetSubnetName'))]"
+            "value": "[variables('subnetID')]"
           }
         },
         "template": {
@@ -2861,7 +2877,8 @@
       "dependsOn": [
         "[resourceId('Microsoft.Resources/deployments', 'PurviewDeploy')]",
         "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('deploymentScriptUAMIName'))]",
-        "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vNetName'), parameters('vNetSubnetName'))]"
+        "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vNetName'), parameters('vNetSubnetName'))]",
+        "[resourceId('Microsoft.Network/virtualNetworks', parameters('vNetName'))]"
       ]
     },
     {
@@ -2891,7 +2908,7 @@
             "value": "[parameters('resourceLocation')]"
           },
           "subnetID": {
-            "value": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vNetName'), parameters('vNetSubnetName'))]"
+            "value": "[variables('subnetID')]"
           },
           "uamiPrincipalID": {
             "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('deploymentScriptUAMIName'))).principalId]"
@@ -3593,7 +3610,8 @@
       },
       "dependsOn": [
         "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', variables('deploymentScriptUAMIName'))]",
-        "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vNetName'), parameters('vNetSubnetName'))]"
+        "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vNetName'), parameters('vNetSubnetName'))]",
+        "[resourceId('Microsoft.Network/virtualNetworks', parameters('vNetName'))]"
       ]
     },
     {
@@ -3644,7 +3662,7 @@
             "value": "[parameters('deploymentMode')]"
           },
           "vNetSubnetID": {
-            "value": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vNetName'), parameters('vNetSubnetName'))]"
+            "value": "[variables('subnetID')]"
           },
           "ctrlDeployPrivateDNSZones": {
             "value": "[parameters('ctrlDeployPrivateDNSZones')]"
@@ -3657,7 +3675,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.3.255.40792",
-              "templateHash": "5491171453459885166"
+              "templateHash": "4042587691340671076"
             }
           },
           "parameters": {
@@ -3750,7 +3768,7 @@
               "apiVersion": "2017-04-18",
               "name": "[parameters('cognitiveServiceAccountName')]",
               "location": "[parameters('resourceLocation')]",
-              "kind": "CognitiveServices",
+              "kind": "TextAnalytics",
               "sku": {
                 "name": "S0"
               }
@@ -4325,7 +4343,7 @@
             }
           ],
           "outputs": {
-            "cognitiveServicesAccountID": {
+            "textAnalyticsAccountID": {
               "type": "string",
               "value": "[resourceId('Microsoft.CognitiveServices/accounts', parameters('cognitiveServiceAccountName'))]"
             },
@@ -4347,7 +4365,8 @@
       "dependsOn": [
         "[resourceId('Microsoft.Resources/deployments', 'CoreServicesDeploy')]",
         "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
-        "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vNetName'), parameters('vNetSubnetName'))]"
+        "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vNetName'), parameters('vNetSubnetName'))]",
+        "[resourceId('Microsoft.Network/virtualNetworks', parameters('vNetName'))]"
       ]
     },
     {
@@ -4366,6 +4385,9 @@
           },
           "resourceLocation": {
             "value": "[parameters('resourceLocation')]"
+          },
+          "purviewCatalogUri": {
+            "value": "[if(parameters('ctrlDeployPurview'), format('{0}.catalog.purview.azure.com', parameters('purviewAccountName')), '')]"
           }
         },
         "template": {
@@ -4375,7 +4397,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.3.255.40792",
-              "templateHash": "11019302329022238655"
+              "templateHash": "10181506121771538445"
             }
           },
           "parameters": {
@@ -4383,6 +4405,9 @@
               "type": "string"
             },
             "resourceLocation": {
+              "type": "string"
+            },
+            "purviewCatalogUri": {
               "type": "string"
             }
           },
@@ -4395,6 +4420,9 @@
               "location": "[parameters('resourceLocation')]",
               "identity": {
                 "type": "SystemAssigned"
+              },
+              "tags": {
+                "catalogUri": "[parameters('purviewCatalogUri')]"
               }
             }
           ],
@@ -4457,7 +4485,7 @@
             "value": "[parameters('deploymentMode')]"
           },
           "vNetSubnetID": {
-            "value": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vNetName'), parameters('vNetSubnetName'))]"
+            "value": "[variables('subnetID')]"
           }
         },
         "template": {
@@ -4678,7 +4706,8 @@
       },
       "dependsOn": [
         "[resourceId('Microsoft.Resources/deployments', 'CoreServicesDeploy')]",
-        "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vNetName'), parameters('vNetSubnetName'))]"
+        "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vNetName'), parameters('vNetSubnetName'))]",
+        "[resourceId('Microsoft.Network/virtualNetworks', parameters('vNetName'))]"
       ]
     }
   ]

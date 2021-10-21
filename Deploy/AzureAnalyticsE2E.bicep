@@ -27,17 +27,29 @@ param ctrlPostDeployScript bool = true  //Controls the execution of post-deploym
 param ctrlAllowStoragePublicContainer bool = false //Controls the creation of data lake Public container
 param ctrlDeployPrivateDNSZones bool = true //Controls the creation of private DNS zones for private links
 
+@allowed([
+  'new'
+  'existing'
+])
+param ctrlNewOrExistingVNet string = 'new'
+
+
 param deploymentDatetime string = utcNow()
 //********************************************************
 // Resource Config Parameters
 //********************************************************
 
 //vNet Parameters
+
+param existingVNetResourceGroupName string = resourceGroup().name
+
 @description('Virtual Network Name')
 param vNetName string = 'azvnet${uniqueSuffix}'
 
 @description('Virtual Network IP Address Space')
-param vNetIPAddressPrefix string = '10.1.0.0/16'
+param vNetIPAddressPrefixes array = [
+    '10.1.0.0/16'
+  ]
 
 @description('Virtual Network Subnet Name')
 param vNetSubnetName string = 'default'
@@ -194,6 +206,10 @@ var azureRBACContributorRoleID = 'b24988ac-6180-42a0-ab88-20f7382dd24c' //Contri
 var azureRBACOwnerRoleID = '8e3af657-a8ff-443c-a75c-2fe8c4bcb635' //Owner
 var deploymentScriptUAMIName = toLower('${resourceGroup().name}-uami')
 
+
+var vNetID = ctrlNewOrExistingVNet == 'new' ? r_vNet.id : resourceId(subscription().subscriptionId,existingVNetResourceGroupName, 'Microsoft.Network/virtualNetworks',vNetName)
+var subnetID = ctrlNewOrExistingVNet == 'new' ? r_subNet.id : '${vNetID}/subnets/${vNetSubnetName}'
+
 //********************************************************
 // Shared Resources
 //********************************************************
@@ -205,19 +221,17 @@ resource r_deploymentScriptUAMI 'Microsoft.ManagedIdentity/userAssignedIdentitie
 }
 
 //vNet created for network protected environments (deploymentMode == 'vNet')
-resource r_vNet 'Microsoft.Network/virtualNetworks@2020-11-01' = if(deploymentMode == 'vNet'){
+resource r_vNet 'Microsoft.Network/virtualNetworks@2020-11-01' = if(deploymentMode == 'vNet' && ctrlNewOrExistingVNet == 'new'){
   name:vNetName
   location: resourceLocation
   properties:{
     addressSpace:{
-      addressPrefixes:[
-        vNetIPAddressPrefix
-      ]
+      addressPrefixes: vNetIPAddressPrefixes
     }
   }
 }
 
-resource r_subNet 'Microsoft.Network/virtualNetworks/subnets@2020-11-01' = if(deploymentMode == 'vNet') {
+resource r_subNet 'Microsoft.Network/virtualNetworks/subnets@2020-11-01' = if(deploymentMode == 'vNet' && ctrlNewOrExistingVNet == 'new') {
   name: vNetSubnetName
   parent: r_vNet
   properties: {
@@ -307,7 +321,7 @@ module m_keyVaultPrivateLink './modules/PrivateEndpoint.bicep' = if(deploymentMo
     privateEndpoitName: r_keyVault.name
     privateLinkServiceId: r_keyVault.id
     resourceLocation: resourceLocation
-    subnetID: r_subNet.id
+    subnetID: subnetID
     deployDNSZoneGroup:ctrlDeployPrivateDNSZones
     privateDNSZoneConfigs: [
       {
@@ -328,8 +342,8 @@ module m_keyVaultPrivateLink './modules/PrivateEndpoint.bicep' = if(deploymentMo
 module m_DeployPrivateDNSZones 'modules/PrivateDNSZonesDeploy.bicep' = if (deploymentMode == 'vNet' && ctrlDeployPrivateDNSZones == true){
   name: 'DeployPrivateDNSZones'
   params: {
-    vNetID: r_vNet.id
-    vNetName: r_vNet.name
+    vNetID: vNetID
+    vNetName: vNetName
     ctrlDeployAI: ctrlDeployAI
     ctrlDeployPurview: ctrlDeployPurview
     ctrlDeployStreaming: ctrlDeployStreaming
@@ -368,7 +382,7 @@ module m_CoreServicesDeploy 'modules/CoreServicesDeploy.bicep' = {
     synapseSQLPoolSKU: synapseSQLPoolSKU
     synapseWorkspaceName: synapseWorkspaceName
     uamiPrincipalID: r_deploymentScriptUAMI.properties.principalId
-    vNetSubnetID: r_subNet.id
+    vNetSubnetID: subnetID
   }
 }
 
@@ -382,7 +396,7 @@ module m_PurviewDeploy 'modules/PurviewDeploy.bicep' = if (ctrlDeployPurview == 
     purviewAccountName: purviewAccountName
     purviewManagedRGName: purviewManagedRGName
     resourceLocation: resourceLocation
-    subnetID: r_subNet.id
+    subnetID: subnetID
     uamiPrincipalID: r_deploymentScriptUAMI.properties.principalId
   }
 }
@@ -404,7 +418,7 @@ module m_AIServicesDeploy 'modules/AIServicesDeploy.bicep' = if(ctrlDeployAI == 
     synapseWorkspaceID: ctrlDeploySynapseSparkPool ? m_CoreServicesDeploy.outputs.synapseWorkspaceID : ''
     synapseWorkspaceName: m_CoreServicesDeploy.outputs.synapseWorkspaceName
     deploymentMode: deploymentMode
-    vNetSubnetID: r_subNet.id
+    vNetSubnetID: subnetID
     ctrlDeployPrivateDNSZones: ctrlDeployPrivateDNSZones
   }
 }
@@ -414,6 +428,7 @@ module m_DataShareDeploy 'modules/DataShareDeploy.bicep' = if(ctrlDeployDataShar
   params: {
     dataShareAccountName: dataShareAccountName
     resourceLocation: resourceLocation
+    purviewCatalogUri: ctrlDeployPurview ? '${purviewAccountName}.catalog.purview.azure.com' : ''
   }
 }
 
@@ -430,7 +445,7 @@ module m_StreamingServicesDeploy 'modules/StreamingServicesDeploy.bicep' = if(ct
     streamAnalyticsJobSku: streamAnalyticsJobSku
     ctrlDeployPrivateDNSZones: ctrlDeployPrivateDNSZones
     deploymentMode: deploymentMode
-    vNetSubnetID: r_subNet.id
+    vNetSubnetID: subnetID
   }
 }
 
@@ -537,7 +552,9 @@ resource r_azureDataShareStorageBlobDataReaderRoleAssignment 'Microsoft.Authoriz
 //********************************************************
 
 //Synapse Deployment Script
-var synapsePostDeploymentPSScript = 'aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL2ZhYnJhZ2FNUy9BenVyZUFuYWx5dGljc0UyRS9tYXN0ZXIvRGVwbG95L3NjcmlwdHMvU3luYXBzZVBvc3REZXBsb3kucHMx'
+//GitHub: var synapsePostDeploymentPSScript = 'aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL2ZhYnJhZ2FNUy9BenVyZUFuYWx5dGljc0UyRS9tYXN0ZXIvRGVwbG95L3NjcmlwdHMvU3luYXBzZVBvc3REZXBsb3kucHMx'
+//Blob:
+var synapsePostDeploymentPSScript = 'aHR0cHM6Ly9hemFuYWx5dGljc2VuZDJlbmQuYmxvYi5jb3JlLndpbmRvd3MubmV0L2RlcGxveXNjcmlwdHMvU3luYXBzZVBvc3REZXBsb3kucHMx'
 var azMLSynapseLinkedServiceIdentityID = ctrlDeployAI ? '-AzMLSynapseLinkedServiceIdentityID ${m_AIServicesDeploy.outputs.azureMLSynapseLinkedServicePrincipalID}' : ''
 var azMLWorkspaceName = ctrlDeployAI ? '-AzMLWorkspaceName ${azureMLWorkspaceName}' : ''
 
@@ -569,7 +586,10 @@ resource r_synapsePostDeployScript 'Microsoft.Resources/deploymentScripts@2020-1
 }
 
 //Purview Deployment Script
-var purviewPostDeploymentPSScript = 'aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL2ZhYnJhZ2FNUy9BenVyZUFuYWx5dGljc0UyRS9tYXN0ZXIvRGVwbG95L3NjcmlwdHMvUHVydmlld1Bvc3REZXBsb3kucHMx'
+//GitHub: var purviewPostDeploymentPSScript = 'aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL2ZhYnJhZ2FNUy9BenVyZUFuYWx5dGljc0UyRS9tYXN0ZXIvRGVwbG95L3NjcmlwdHMvUHVydmlld1Bvc3REZXBsb3kucHMx'
+//Blob:
+var purviewPostDeploymentPSScript = 'aHR0cHM6Ly9hemFuYWx5dGljc2VuZDJlbmQuYmxvYi5jb3JlLndpbmRvd3MubmV0L2RlcGxveXNjcmlwdHMvUHVydmlld1Bvc3REZXBsb3kucHMx'
+var dataShareIdentityID = ctrlDeployDataShare ? '-DataShareIdentityID ${m_DataShareDeploy.outputs.dataShareAccountPrincipalID}' : ''
 
 resource r_purviewPostDeployScript 'Microsoft.Resources/deploymentScripts@2020-10-01' = if(ctrlDeployPurview == true){
   name:'PurviewPostDeploymentScript-${deploymentDatetime}'
@@ -592,7 +612,7 @@ resource r_purviewPostDeployScript 'Microsoft.Resources/deploymentScripts@2020-1
     cleanupPreference:'OnSuccess'
     retentionInterval: 'P1D'
     timeout:'PT30M'
-    arguments: '-PurviewAccountName ${purviewAccountName} -SubscriptionID ${subscription().subscriptionId} -ResourceGroupName ${resourceGroup().name} -UAMIIdentityID ${r_deploymentScriptUAMI.properties.principalId} -ScanEndpoint ${ctrlDeployPurview ? m_PurviewDeploy.outputs.purviewScanEndpoint : ''} -APIVersion ${ctrlDeployPurview ? m_PurviewDeploy.outputs.purviewAPIVersion : ''} -SynapseWorkspaceName ${m_CoreServicesDeploy.outputs.synapseWorkspaceName} -KeyVaultName ${keyVaultName} -KeyVaultID ${r_keyVault.id} -DataLakeAccountName ${m_CoreServicesDeploy.outputs.dataLakeStorageAccountName}'
+    arguments: '-PurviewAccountName ${purviewAccountName} -SubscriptionID ${subscription().subscriptionId} -ResourceGroupName ${resourceGroup().name} -UAMIIdentityID ${r_deploymentScriptUAMI.properties.principalId} -ScanEndpoint ${ctrlDeployPurview ? m_PurviewDeploy.outputs.purviewScanEndpoint : ''} -APIVersion ${ctrlDeployPurview ? m_PurviewDeploy.outputs.purviewAPIVersion : ''} -SynapseWorkspaceName ${m_CoreServicesDeploy.outputs.synapseWorkspaceName} -KeyVaultName ${keyVaultName} -KeyVaultID ${r_keyVault.id} -DataLakeAccountName ${m_CoreServicesDeploy.outputs.dataLakeStorageAccountName} ${dataShareIdentityID}'
     primaryScriptUri: base64ToString(purviewPostDeploymentPSScript)
   }
 }

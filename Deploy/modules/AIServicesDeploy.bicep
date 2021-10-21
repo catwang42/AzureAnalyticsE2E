@@ -42,14 +42,16 @@ resource r_privateDNSZoneAzureMLNotebooks 'Microsoft.Network/privateDnsZones@202
 }
 
 //Cognitive Services Account
-resource r_cognitiveServices 'Microsoft.CognitiveServices/accounts@2017-04-18' = {
+resource r_textAnalytics 'Microsoft.CognitiveServices/accounts@2017-04-18' = {
   name: cognitiveServiceAccountName
   location: resourceLocation
-  kind: 'CognitiveServices'
+  kind: 'TextAnalytics'
   sku:{
     name: 'S0'
   }
 }
+
+
 
 //Anomaly Detector Account
 resource r_anomalyDetector 'Microsoft.CognitiveServices/accounts@2017-04-18' = {
@@ -65,10 +67,10 @@ resource r_anomalyDetector 'Microsoft.CognitiveServices/accounts@2017-04-18' = {
 resource r_keyVault 'Microsoft.KeyVault/vaults@2021-04-01-preview' existing = {
   name: keyVaultName
 
-  resource r_cognitiveServicesAccountKey 'secrets' = {
-    name:'${r_cognitiveServices.name}-Key'
+  resource r_textAnalyticsAccountKey 'secrets' = {
+    name:'${r_textAnalytics.name}-Key'
     properties:{
-      value: listKeys(r_cognitiveServices.id,r_cognitiveServices.apiVersion).key1
+      value: listKeys(r_textAnalytics.id,r_textAnalytics.apiVersion).key1
     }
   }
 
@@ -216,23 +218,6 @@ resource r_azureMLWorkspace 'Microsoft.MachineLearningServices/workspaces@2021-0
       resourceId: synapseSparkPoolID
     }
   }
-
-  // resource r_dataLakeDataStore_raw 'datastores@2021-03-01-preview' = {
-  //   name: 'dataLakeDataStore_raw'
-  //   properties: {
-
-  //     contents: {
-  //       accountName: ''
-  //       containerName: 'raw'
-  //       credentials: 
-  //       protocol: 
-  //       contentsType: 'AzureDataLakeGen2'
-  //       endpoint: 
-
-  //     }
-
-  //   }
-  // }
 }
 
 resource r_azureMLSynapseLinkedService 'Microsoft.MachineLearningServices/workspaces/linkedServices@2020-09-01-preview' = {
@@ -273,7 +258,7 @@ module m_azureMLWorkspacePrivateLink 'PrivateEndpoint.bicep' = if(deploymentMode
   }
 }
 
-output cognitiveServicesAccountID string = r_cognitiveServices.id
+output textAnalyticsAccountID string = r_textAnalytics.id
 output azureMLWorkspaceIdentityPrincipalID string = r_azureMLWorkspace.identity.principalId
 output azureMLSynapseLinkedServicePrincipalID string = r_azureMLSynapseLinkedService.identity.principalId
 output azureMLWorkspaceID string = r_azureMLWorkspace.id

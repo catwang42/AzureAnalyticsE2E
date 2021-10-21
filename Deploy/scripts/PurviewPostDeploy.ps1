@@ -7,6 +7,9 @@ param(
   [string] $KeyVaultName,
   [string] $KeyVaultID,
   [string] $UAMIIdentityID,
+  [AllowEmptyString()]
+  [Parameter(Mandatory=$false)]
+  [string] $DataShareIdentityID,
   [string] $DataLakeAccountName,
   [string] $SynapseWorkspaceName
 )
@@ -74,14 +77,22 @@ while (-not $completed) {
     Write-Host "Retrieve metadata policy (ID $PolicyId) details..."
     $uri = "https://$PurviewAccountName.purview.azure.com/policystore/metadataPolicies/$PolicyId`?api-version=$APIVersion"
 
-    #Retrieve Metadata Policy details and add Deployment Script UAMI PrincipalID to Collection Administrator and Data Source Administrator Roles.
+    #Retrieve Metadata Policy details 
     $result = Invoke-RestMethod -Method Get -ContentType "application/json" -Uri $uri -Headers $headers -Body $body -ErrorAction Stop
+
+
     foreach ($attributeRule in $result.properties.attributeRules) {
+      #Add Deployment Script UAMI PrincipalID to Data Source Administrator Role.
       if ($attributeRule.id -like "*data-source-administrator*") {
         if (-not ($attributeRule.dnfCondition[0][0].attributeValueIncludedIn -contains $UAMIIdentityID)) {
           $attributeRule.dnfCondition[0][0].attributeValueIncludedIn += $UAMIIdentityID  
         }
-      } 
+      #Add Data Share PrincipalID to Data Curator Role.
+      } elseif ($attributeRule.id -like "*data-curator*" -and -not ([string]::IsNullOrEmpty($DataShareIdentityID))) {
+        if (-not ($attributeRule.dnfCondition[0][0].attributeValueIncludedIn -contains $DataShareIdentityID)) {
+          $attributeRule.dnfCondition[0][0].attributeValueIncludedIn += $DataShareIdentityID  
+        }
+      }
     }
 
     #Update Metadata Policy

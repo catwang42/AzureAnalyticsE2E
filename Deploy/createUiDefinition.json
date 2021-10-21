@@ -437,26 +437,72 @@
 							}
 						},
 						{
-							"name": "ctrlDeployPrivateDNSZones",
-							"type": "Microsoft.Common.OptionsGroup",
-							"label": "Deploy Private DNS Zones",
-							"defaultValue": "Yes (recommended)",
-							"toolTip": "",
-							"constraints": {
-								"allowedValues": [
+							"name": "vNetConfigSection",
+							"type": "Microsoft.Common.Section",
+							"label": "Network Settings",
+							"elements": [
 								{
-									"label": "Yes (recommended)",
-									"value": "Yes"
+									"name": "vNetConfig",
+									"type": "Microsoft.Network.VirtualNetworkCombo",
+									"label": {
+										"virtualNetwork": "Select virtual network",
+										"subnets": "Subnets"
+									},
+									"toolTip": {
+										"virtualNetwork": "",
+										"subnets": ""
+									},
+									"defaultValue": {
+										"name": "azvnet01",
+										"addressPrefixSize": "/16"
+									},
+									"constraints": {
+										"minAddressPrefixSize": "/16"
+									},
+									"options": {
+										"hideExisting": false
+									},
+									"subnets": {
+										"default": {
+											"label": "default",
+											"defaultValue": {
+												"name": "default",
+												"addressPrefixSize": "/24"
+											},
+											"constraints": {
+												"minAddressPrefixSize": "/24",
+												"minAddressCount": 12,
+												"requireContiguousAddresses": true
+											}
+										}
+									},
+									"visible": true
 								},
 								{
-									"label": "No",
-									"value": "No"
+									"name": "ctrlDeployPrivateDNSZones",
+									"type": "Microsoft.Common.OptionsGroup",
+									"label": "Deploy Private DNS Zones",
+									"defaultValue": "Yes (recommended)",
+									"toolTip": "",
+									"constraints": {
+										"allowedValues": [
+										{
+											"label": "Yes (recommended)",
+											"value": "Yes"
+										},
+										{
+											"label": "No",
+											"value": "No"
+										}
+										],
+										"required": true
+									},
+									"visible": true
 								}
-								],
-								"required": true
-							},
+							],
 							"visible": "[equals(steps('basics').deploymentModeSection.deploymentMode, 'vNet')]"
 						}
+						
 					]
 				},
 				{
@@ -484,14 +530,20 @@
 				"ctrlDeployAI": "[equals(steps('workloadComponents').aiSettingsSection.ctrlDeployAI, 'Yes')]",
 				"ctrlDeployStreaming": "[equals(steps('workloadComponents').streamingSettings.ctrlDeployStreaming, 'Yes')]",
 				"ctrlDeployDataShare": "[equals(steps('workloadComponents').dataSharingSettings.ctrlDeployDataShare, 'Yes')]",
-				"ctrlDeployPrivateDNSZones": "[steps('networkSettings').ctrlDeployPrivateDNSZones]",
+				"ctrlDeployPrivateDNSZones": "[equals(steps('networkSettings').vNetConfigSection.ctrlDeployPrivateDNSZones, 'Yes')]",
 				"ctrlDeploySynapseSQLPool": "[equals(steps('coreSettings').synapseSettingsSection.ctrlDeploySynapseSQLPool, 'Yes')]",
 				"synapseDedicatedSQLPoolName": "[steps('coreSettings').synapseSettingsSection.synapseDedicatedSQLPoolName]",
 				"ctrlDeploySynapseSparkPool": "[equals(steps('coreSettings').synapseSettingsSection.ctrlDeploySynapseSparkPool, 'Yes')]",
 				"synapseSparkPoolName": "[steps('coreSettings').synapseSettingsSection.synapseSparkPoolName]",
 				"allowSharedKeyAccess": "[steps('coreSettings').dataLakeSettingsSection.allowSharedKeyAccess]",
 				"synapseSqlAdminUserName": "[steps('coreSettings').synapseSettingsSection.synapseSqlAdminUserName]",
-				"synapseSqlAdminPassword": "[steps('coreSettings').synapseSettingsSection.synapseSqlAdminPassword]"
+				"synapseSqlAdminPassword": "[steps('coreSettings').synapseSettingsSection.synapseSqlAdminPassword]",
+				"ctrlNewOrExistingVNet": "[steps('networkSettings').vNetConfigSection.vNetConfig.newOrExisting]",
+				"existingVNetResourceGroupName": "[steps('networkSettings').vNetConfigSection.vNetConfig.resourceGroup]",
+				"vNetName": "[steps('networkSettings').vNetConfigSection.vNetConfig.name]",
+				"vNetIPAddressPrefixes": "[steps('networkSettings').vNetConfigSection.vNetConfig.addressPrefixes]",
+				"vNetSubnetName": "[steps('networkSettings').vNetConfigSection.vNetConfig.subnets.default.name]",
+				"vNetSubnetIPAddressPrefix": "[steps('networkSettings').vNetConfigSection.vNetConfig.subnets.default.addressPrefix]"
 			}
         }
     }
